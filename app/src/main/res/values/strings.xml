@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Digital Habits: Blocker</string>
+    <string name="launcher_name">Blocker</string>
 
     <!-- Consent Screen -->
     <string name="accessibility_consent_title">Consent necessary</string>
