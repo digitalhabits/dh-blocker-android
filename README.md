@@ -1,4 +1,4 @@
-# Digital Habits: Blocker Android (Beta)
+# Digital Habits: Blocker Android
 
 Block distracting websites and apps with scheduled or one-off blocks. Stay focused on what matters.
 

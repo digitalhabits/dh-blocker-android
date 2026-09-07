@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace 'net.kollnig.reddblockandroid'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId "net.kollnig.reddblockandroid"
         minSdk 26
-        targetSdk 36
-        versionCode 44
-        versionName "0.4.4"
+        targetSdk 37
+        versionCode 45
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
