@@ -2,7 +2,7 @@
 
 Block distracting websites and apps with scheduled or one-off blocks. Stay focused on what matters.
 
-Built by computer scientists at the University of Oxford (Dr Ulrik Lyngs) and the University of Maastricht (Dr Konrad Kollnig), as part of the Reduce Digital Distraction project ([reddfocus.org](https://reddfocus.org)).
+Built by computer scientists at the University of Oxford (Dr Ulrik Lyngs) and the University of Maastricht (Dr Konrad Kollnig), as part of the Reduce Digital Distraction project ([digitalhabits.org](https://digitalhabits.org)).
 
 ## Features
 
@@ -49,7 +49,7 @@ flowchart TB
     AppWatcher -->|detect blocked app| Apps
     AppWatcher -->|redirect to| Home
     WebWatcher -->|detect blocked URL| Browsers
-    WebWatcher -->|redirect to reddfocus.org| Browsers
+    WebWatcher -->|redirect to digitalhabits.org| Browsers
 ```
 
 ## How It Works
@@ -65,7 +65,7 @@ Digital Habits: Blocker uses Android's Accessibility Service to monitor which ap
 
 ### Website Blocking
 
-The Accessibility Service also monitors the URL bar of supported browsers. When a blocked domain is detected, the browser is redirected to `reddfocus.org`.
+The Accessibility Service also monitors the URL bar of supported browsers. When a blocked domain is detected, the browser is redirected to `digitalhabits.org`.
 
 | Browser | Support |
 |---------|---------|
@@ -163,4 +163,4 @@ MIT
 
 ---
 
-Made with ♥ by [reddfocus.org](https://reddfocus.org)
+Made with ♥ by [digitalhabits.org](https://digitalhabits.org)

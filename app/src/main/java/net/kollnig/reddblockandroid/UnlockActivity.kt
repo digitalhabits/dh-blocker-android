@@ -56,7 +56,7 @@ class UnlockActivity : ComponentActivity() {
                     onBackPressed = {
                         if (isWebsite) {
                             // The browser has already been redirected to the focus
-                            // page (reddfocus.org). Just finish so Android returns to
+                            // page (digitalhabits.org). Just finish so Android returns to
                             // it, rather than kicking the user out to the home screen.
                             finish()
                         } else {

@@ -44,7 +44,7 @@ class BlockerService : AccessibilityService() {
         // Check for website blocking in supported browsers.
         // If the browser app itself is blocked, skip URL-based website handling
         // so the whole browser is gated as an app (go home on cancel) rather than
-        // redirected to the reddfocus.org focus page like a single blocked site.
+        // redirected to the digitalhabits.org focus page like a single blocked site.
         if (isSupportedBrowser(pkg) && Schedules.findBlockingScheduleForApp(pkg) == null) {
             val currentTime = System.currentTimeMillis()
             if (currentTime - lastUrlCheckTime >= URL_CHECK_THROTTLE_MS) {
@@ -172,7 +172,7 @@ class BlockerService : AccessibilityService() {
 
     private fun navigateBrowserToBlank(browserPackage: String) {
         try {
-            val uri = "https://reddfocus.org".toUri()
+            val uri = "https://digitalhabits.org".toUri()
             val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                 setPackage(browserPackage)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
