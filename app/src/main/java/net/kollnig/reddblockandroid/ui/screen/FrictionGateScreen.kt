@@ -113,7 +113,6 @@ fun FrictionGateScreen(
     var wordStartMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var weeklyStats by remember { mutableStateOf(ChineseTypingStats.getWeeklyStats()) }
     val focusRequester = remember { FocusRequester() }
-    val inputGroupRequester = remember { BringIntoViewRequester() }
     val inputFieldRequester = remember { BringIntoViewRequester() }
     var isInputFocused by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -150,7 +149,6 @@ fun FrictionGateScreen(
         }.collectLatest { (imeBottom, inputFocused, _) ->
             if (imeBottom > 0 && inputFocused) {
                 withFrameNanos { }
-                inputGroupRequester.bringIntoView()
                 inputFieldRequester.bringIntoView()
             }
         }
@@ -318,111 +316,105 @@ fun FrictionGateScreen(
                             color = MaterialTheme.colorScheme.outline
                         )
 
-                        // Word to type and input field
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .bringIntoViewRequester(inputGroupRequester),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        // Word to type
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
                         ) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                            ) {
-                                if (useChineseMode) {
-                                    val cw = chineseWords[currentWordIndex]
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            cw.meaning,
-                                            style = MaterialTheme.typography.displaySmall,
-                                            fontWeight = FontWeight.Bold,
-                                            textAlign = TextAlign.Center,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            cw.character,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            textAlign = TextAlign.Center,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        if (isError || pinyinManuallyRevealed) {
-                                            Text(
-                                                cw.pinyin,
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                textAlign = TextAlign.Center,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        } else {
-                                            TextButton(onClick = { pinyinManuallyRevealed = true }) {
-                                                Text(stringResource(R.string.friction_gate_reveal_pinyin))
-                                            }
-                                        }
-                                        IconButton(onClick = {
-                                            tts?.speak(cw.character, TextToSpeech.QUEUE_FLUSH, null, null)
-                                        }) {
-                                            Icon(
-                                                Icons.Rounded.VolumeUp,
-                                                contentDescription = "Listen",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    }
-                                } else {
+                            if (useChineseMode) {
+                                val cw = chineseWords[currentWordIndex]
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
                                     Text(
-                                        words[currentWordIndex],
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        style = MaterialTheme.typography.headlineSmall,
+                                        cw.meaning,
+                                        style = MaterialTheme.typography.displaySmall,
                                         fontWeight = FontWeight.Bold,
                                         textAlign = TextAlign.Center,
                                         color = MaterialTheme.colorScheme.primary
                                     )
-                                }
-                            }
-
-                            OutlinedTextField(
-                                value = userInput,
-                                onValueChange = {
-                                    userInput = it
-                                    isError = false
-                                },
-                                placeholder = {
                                     Text(
-                                        if (useChineseMode) stringResource(R.string.friction_gate_pinyin_hint)
-                                        else stringResource(R.string.type_here_hint),
+                                        cw.character,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .bringIntoViewRequester(inputFieldRequester)
-                                    .focusRequester(focusRequester)
-                                    .onFocusChanged { isInputFocused = it.isFocused },
-                                shape = RoundedCornerShape(10.dp),
-                                singleLine = true,
-                                isError = isError,
-                                keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Done,
-                                    autoCorrectEnabled = false,
-                                    keyboardType = KeyboardType.Password
-                                ),
-                                keyboardActions = KeyboardActions(onDone = { checkWord() }),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                    if (isError || pinyinManuallyRevealed) {
+                                        Text(
+                                            cw.pinyin,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        TextButton(onClick = { pinyinManuallyRevealed = true }) {
+                                            Text(stringResource(R.string.friction_gate_reveal_pinyin))
+                                        }
+                                    }
+                                    IconButton(onClick = {
+                                        tts?.speak(cw.character, TextToSpeech.QUEUE_FLUSH, null, null)
+                                    }) {
+                                        Icon(
+                                            Icons.Rounded.VolumeUp,
+                                            contentDescription = "Listen",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    words[currentWordIndex],
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-                            )
+                            }
                         }
+
+                        // Input field
+                        OutlinedTextField(
+                            value = userInput,
+                            onValueChange = {
+                                userInput = it
+                                isError = false
+                            },
+                            placeholder = {
+                                Text(
+                                    if (useChineseMode) stringResource(R.string.friction_gate_pinyin_hint)
+                                    else stringResource(R.string.type_here_hint),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .bringIntoViewRequester(inputFieldRequester)
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { isInputFocused = it.isFocused },
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true,
+                            isError = isError,
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done,
+                                autoCorrectEnabled = false,
+                                keyboardType = KeyboardType.Password
+                            ),
+                            keyboardActions = KeyboardActions(onDone = { checkWord() }),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
 
                         // Buttons row
                         Row(
