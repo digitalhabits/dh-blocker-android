@@ -1,6 +1,8 @@
 package net.kollnig.reddblockandroid.ui.screen
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -16,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -27,10 +31,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.collectLatest
 import net.kollnig.reddblockandroid.BuildConfig
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.data.CHINESE_VOCABULARY
-import net.kollnig.reddblockandroid.ui.theme.*
 import net.kollnig.reddblockandroid.util.ChineseTypingStats
 
 // Common English words for the friction gate
@@ -109,7 +113,11 @@ fun FrictionGateScreen(
     var wordStartMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var weeklyStats by remember { mutableStateOf(ChineseTypingStats.getWeeklyStats()) }
     val focusRequester = remember { FocusRequester() }
+    val inputFieldRequester = remember { BringIntoViewRequester() }
+    var isInputFocused by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val density = LocalDensity.current
+    val imeInsets = WindowInsets.ime
 
     // Build the challenge phrase (all remaining words)
     val challengePhrase = remember {
@@ -121,13 +129,28 @@ fun FrictionGateScreen(
         // The text field's node may not be attached on the first frame (e.g.
         // right after the activity is created/recreated), which makes
         // requestFocus() throw "FocusRequester is not initialized". Retry on
-        // subsequent frames until it succeeds.
+        // subsequent frames until focus is actually granted.
         repeat(10) {
-            if (runCatching { focusRequester.requestFocus() }.isSuccess) {
+            if (runCatching { focusRequester.requestFocus() }.getOrDefault(false)) {
                 keyboardController?.show()
                 return@LaunchedEffect
             }
             withFrameNanos { }
+        }
+    }
+
+    LaunchedEffect(density, imeInsets) {
+        snapshotFlow {
+            Triple(
+                imeInsets.getBottom(density),
+                isInputFocused,
+                currentWordIndex
+            )
+        }.collectLatest { (imeBottom, inputFocused, _) ->
+            if (imeBottom > 0 && inputFocused) {
+                withFrameNanos { }
+                inputFieldRequester.bringIntoView()
+            }
         }
     }
 
@@ -369,12 +392,14 @@ fun FrictionGateScreen(
                                 Text(
                                     if (useChineseMode) stringResource(R.string.friction_gate_pinyin_hint)
                                     else stringResource(R.string.type_here_hint),
-                                    color = TextHint
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(focusRequester),
+                                .bringIntoViewRequester(inputFieldRequester)
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { isInputFocused = it.isFocused },
                             shape = RoundedCornerShape(10.dp),
                             singleLine = true,
                             isError = isError,
