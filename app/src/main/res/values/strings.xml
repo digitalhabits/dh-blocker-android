@@ -70,6 +70,7 @@
     <string name="add_selected">Add (%d)</string>
     <string name="add">Add</string>
     <string name="website_placeholder">e.g. reddit.com</string>
+    <string name="invalid_website">Enter a website such as reddit.com</string>
     <string name="delete">Delete</string>
     <string name="delete_schedule">Delete Schedule</string>
     <string name="delete_schedule_confirm">Delete \"%s\"? This cannot be undone.</string>
