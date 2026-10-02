@@ -7,8 +7,6 @@ import androidx.compose.ui.graphics.Color
 // Primary – dark navy used for the main actions and selected controls.
 val SlateBlue = Color(0xFF536174)
 val SlateBlueLight = Color(0xFF9AA8B7)
-val IndigoPrimary = Color(0xFF17253D)
-val IndigoPrimaryLight = Color(0xFF8FA9D1)
 
 val DarkNavy = Color(0xFF17253D)
 val DarkNavyLight = Color(0xFF304666)
@@ -34,10 +32,6 @@ val SoftRedBg = Color(0xFFFBE9E7)
 val TextPrimary = Color(0xFF1E2938)
 val TextSecondary = Color(0xFF657181)
 val TextHint = Color(0xFF9AA1A8)
-
-// Day-chip selected fill
-val DayChipSelected = Color(0xFF17253D)
-val DayChipUnselected = Color(0xFFE8E2D8)
 
 // A restrained deterministic palette for focus-space card edge accents.
 val FocusSpaceAccentPalette = listOf(

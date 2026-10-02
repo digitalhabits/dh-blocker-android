@@ -46,8 +46,10 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = IndigoPrimaryLight,
-    onPrimary = Color.White,
+    // Ivory on navy, so selected controls and highlighted text stand out
+    // against the dark surfaces.
+    primary = CoolGrey,
+    onPrimary = DarkNavy,
     primaryContainer = Color(0xFF304666),
     onPrimaryContainer = Color(0xFFDCE4F1),
 
