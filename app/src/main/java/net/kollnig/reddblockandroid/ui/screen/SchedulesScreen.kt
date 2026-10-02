@@ -192,7 +192,7 @@ private fun ScheduleItem(
                     label = "containerColor"
             )
 
-    val borderColor = if (isActive) IndigoPrimary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outlineVariant
+    val borderColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outlineVariant
 
     Card(
             onClick = onClick,
@@ -201,7 +201,7 @@ private fun ScheduleItem(
                 .shadow(2.dp, RoundedCornerShape(16.dp)),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = containerColor),
-            border = if (isActive) BorderStroke(1.5.dp, IndigoPrimary.copy(alpha = 0.4f)) else null
+            border = if (isActive) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) else null
     ) {
         Row(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -212,7 +212,7 @@ private fun ScheduleItem(
             Surface(
                     modifier = Modifier.size(40.dp),
                     shape = CircleShape,
-                    color = if (isActive) IndigoPrimary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant
+                    color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -276,7 +276,7 @@ private fun ScheduleItem(
                 onCheckedChange = { onToggle() },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = IndigoPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
                     uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 )

@@ -90,7 +90,6 @@ import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.data.Schedule
 import net.kollnig.reddblockandroid.data.ScheduleTiming
 import net.kollnig.reddblockandroid.schedule.Schedules
-import net.kollnig.reddblockandroid.ui.theme.DayChipSelected
 import net.kollnig.reddblockandroid.ui.theme.SoftRed
 import net.kollnig.reddblockandroid.ui.theme.TextHint
 import java.time.DayOfWeek
@@ -530,7 +529,7 @@ fun CreateScheduleScreen(
                                         selectedDays = if (isSelected) selectedDays - day else selectedDays + day
                                     },
                                 shape = CircleShape,
-                                color = if (isSelected) DayChipSelected else MaterialTheme.colorScheme.surfaceVariant
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                             ) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text(
