@@ -36,6 +36,7 @@ import net.kollnig.reddblockandroid.BuildConfig
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.data.CHINESE_VOCABULARY
 import net.kollnig.reddblockandroid.util.ChineseTypingStats
+import net.kollnig.reddblockandroid.util.prefs
 
 // Common English words for the friction gate
 private val WORD_LIST = listOf(
@@ -77,7 +78,9 @@ fun FrictionGateScreen(
     blockedTargetLabel: String? = null,
     isBlockMode: Boolean = false,
 ) {
-    val useChineseMode = BuildConfig.DEBUG
+    val useChineseMode = remember {
+        BuildConfig.DEBUG && prefs.getBoolean("debug_chinese_mode_enabled", true)
+    }
 
     // TTS for Chinese pronunciation
     val context = LocalContext.current

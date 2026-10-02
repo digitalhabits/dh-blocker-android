@@ -73,6 +73,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.coroutines.launch
 import net.kollnig.reddblockandroid.R
+import net.kollnig.reddblockandroid.BuildConfig
 import net.kollnig.reddblockandroid.data.Schedule
 import net.kollnig.reddblockandroid.data.ScheduleTiming
 import net.kollnig.reddblockandroid.schedule.Schedules
@@ -80,6 +81,7 @@ import net.kollnig.reddblockandroid.ui.theme.BadgeGreen
 import net.kollnig.reddblockandroid.ui.theme.FocusSpaceAccentPalette
 import net.kollnig.reddblockandroid.ui.theme.SoftRed
 import net.kollnig.reddblockandroid.util.isAccessibilityServiceEnabled
+import net.kollnig.reddblockandroid.util.prefs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,6 +96,7 @@ fun HomeScreen(
     var schedules by remember { mutableStateOf(Schedules.getAll()) }
     var refreshTick by remember { mutableIntStateOf(0) }
     var isMenuExpanded by remember { mutableStateOf(false) }
+    var chineseModeEnabled by remember { mutableStateOf(prefs.getBoolean("debug_chinese_mode_enabled", true)) }
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -191,6 +194,21 @@ fun HomeScreen(
                             expanded = isMenuExpanded,
                             onDismissRequest = { isMenuExpanded = false }
                         ) {
+                            if (BuildConfig.DEBUG) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(
+                                            if (chineseModeEnabled) R.string.disable_chinese_mode
+                                            else R.string.enable_chinese_mode
+                                        ))
+                                    },
+                                    onClick = {
+                                        chineseModeEnabled = !chineseModeEnabled
+                                        prefs.edit().putBoolean("debug_chinese_mode_enabled", chineseModeEnabled).apply()
+                                        isMenuExpanded = false
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.export_rules)) },
                                 onClick = {

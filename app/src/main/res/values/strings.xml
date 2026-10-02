@@ -37,6 +37,8 @@
     <string name="focus_space_empty_title">No focus spaces yet</string>
     <string name="focus_space_empty_desc">Create one to choose what you want to protect your attention from.</string>
     <string name="settings">Settings</string>
+    <string name="disable_chinese_mode">Disable Chinese mode</string>
+    <string name="enable_chinese_mode">Enable Chinese mode</string>
 
     <!-- Schedules Screen -->
     <string name="back">Back</string>
