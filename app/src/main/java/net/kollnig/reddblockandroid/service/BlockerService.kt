@@ -152,6 +152,8 @@ class BlockerService : AccessibilityService() {
         "com.opera.touch" to listOf("addressbarEdit"),
         // Vivaldi
         "com.vivaldi.browser" to listOf("url_bar", "display_url"),
+        // Vanadium (GrapheneOS)
+        "app.vanadium.browser" to listOf("url_bar", "display_url"),
         // Kiwi Browser
         "com.kiwibrowser.browser" to listOf("url_bar", "display_url"),
         // DuckDuckGo

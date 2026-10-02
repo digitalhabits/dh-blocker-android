@@ -7,7 +7,7 @@ Built by computer scientists at the University of Oxford (Dr Ulrik Lyngs) and th
 ## Features
 
 - **App Blocking** — Detects blocked apps via Accessibility Service and returns you to the home screen
-- **Website Blocking** — Blocks websites in Firefox, Chrome, Brave, and other Chromium-based browsers
+- **Website Blocking** — Blocks websites in Firefox, Chrome, Brave, Vanadium, and other Chromium-based browsers
 - **Flexible Blocklists** — Create multiple schedules with custom sets of blocked apps and websites
 - **One-Off Blocks** — Quick blocks for immediate focus sessions
 - **Scheduled Blocks** — Set recurring blocks on specific days/times (e.g., block social media Mon–Fri 9am–5pm)
@@ -72,6 +72,7 @@ The Accessibility Service also monitors the URL bar of supported browsers. When 
 | Firefox | ✅ URL bar monitoring via Accessibility |
 | Chrome  | ✅ URL bar monitoring via Accessibility |
 | Brave   | ✅ URL bar monitoring via Accessibility |
+| Vanadium | ✅ URL bar monitoring via Accessibility |
 | Other Chromium-based | ✅ URL bar monitoring via Accessibility |
 
 ### Schedule Management
