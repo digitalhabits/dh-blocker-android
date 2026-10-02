@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
@@ -93,6 +94,7 @@ import net.kollnig.reddblockandroid.schedule.Schedules
 import net.kollnig.reddblockandroid.ui.theme.DayChipSelected
 import net.kollnig.reddblockandroid.ui.theme.SoftRed
 import net.kollnig.reddblockandroid.ui.theme.TextHint
+import net.kollnig.reddblockandroid.util.normaliseDomain
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.TextStyle
@@ -136,6 +138,7 @@ fun CreateScheduleScreen(
 
     var expandedSection by remember { mutableStateOf<EditorSection?>(EditorSection.WHAT_TO_BLOCK) }
     var inlineWebsite by remember { mutableStateOf("") }
+    var inlineWebsiteError by remember { mutableStateOf(false) }
     var showAppPicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
@@ -155,13 +158,20 @@ fun CreateScheduleScreen(
     )
     val selectedAutoReenableLabel = autoReenableOptions.firstOrNull { it.first == autoReenableMinutes }?.second
         ?: stringResource(R.string.auto_reenable_never)
-    val domainPattern = remember { Regex("^[a-zA-Z0-9][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$") }
-
-    fun cleanDomain(input: String): String {
-        var domain = input.lowercase().trim()
-        domain = domain.removePrefix("https://").removePrefix("http://")
-        domain = domain.removePrefix("www.")
-        return domain.split("/").first()
+    // Adds the domain typed in the website field, if any. Returns false (and
+    // flags the field) when the text is not a valid domain.
+    fun commitInlineWebsite(): Boolean {
+        if (inlineWebsite.isBlank()) return true
+        val domain = normaliseDomain(inlineWebsite)
+        if (domain == null) {
+            inlineWebsiteError = true
+            expandedSection = EditorSection.WHAT_TO_BLOCK
+            return false
+        }
+        blockedWebsites = (blockedWebsites + domain).distinct()
+        inlineWebsite = ""
+        inlineWebsiteError = false
+        return true
     }
 
     fun buildSchedule(): Schedule {
@@ -208,6 +218,7 @@ fun CreateScheduleScreen(
 
     fun saveSchedule() {
         if (scheduleName.isBlank()) return
+        if (!commitInlineWebsite()) return
         val schedule = buildSchedule()
         if (existingSchedule != null &&
             Schedules.isScheduleActive(existingSchedule.id) &&
@@ -384,21 +395,28 @@ fun CreateScheduleScreen(
                 }
                 OutlinedTextField(
                     value = inlineWebsite,
-                    onValueChange = { inlineWebsite = it },
+                    onValueChange = {
+                        inlineWebsite = it
+                        inlineWebsiteError = false
+                    },
                     placeholder = { Text(stringResource(R.string.website_placeholder), color = MaterialTheme.colorScheme.outline) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        if (inlineWebsite.isNotBlank()) {
-                            val cleaned = cleanDomain(inlineWebsite)
-                            if (cleaned.isNotBlank() && domainPattern.matches(cleaned)) {
-                                blockedWebsites = (blockedWebsites + cleaned).distinct()
-                                inlineWebsite = ""
-                            }
+                    isError = inlineWebsiteError,
+                    supportingText = if (inlineWebsiteError) {
+                        { Text(stringResource(R.string.invalid_website)) }
+                    } else null,
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { commitInlineWebsite() },
+                            enabled = inlineWebsite.isNotBlank()
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.add_website))
                         }
-                    }),
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { commitInlineWebsite() }),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
