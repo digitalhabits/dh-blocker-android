@@ -1,8 +1,6 @@
 package net.kollnig.reddblockandroid.ui.screen
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -15,23 +13,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.flow.collectLatest
 import net.kollnig.reddblockandroid.BuildConfig
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.data.CHINESE_VOCABULARY
@@ -116,17 +109,7 @@ fun FrictionGateScreen(
     var wordStartMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var weeklyStats by remember { mutableStateOf(ChineseTypingStats.getWeeklyStats()) }
     val focusRequester = remember { FocusRequester() }
-    val inputFieldRequester = remember { BringIntoViewRequester() }
-    var isInputFocused by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val density = LocalDensity.current
-    val imeInsets = WindowInsets.ime
-
-    // Build the challenge phrase (all remaining words)
-    val challengePhrase = remember {
-        if (useChineseMode) chineseWords.joinToString("  ") { it.character }
-        else words.joinToString(" ")
-    }
 
     LaunchedEffect(Unit) {
         // The text field's node may not be attached on the first frame (e.g.
@@ -139,21 +122,6 @@ fun FrictionGateScreen(
                 return@LaunchedEffect
             }
             withFrameNanos { }
-        }
-    }
-
-    LaunchedEffect(density, imeInsets) {
-        snapshotFlow {
-            Triple(
-                imeInsets.getBottom(density),
-                isInputFocused,
-                currentWordIndex
-            )
-        }.collectLatest { (imeBottom, inputFocused, _) ->
-            if (imeBottom > 0 && inputFocused) {
-                withFrameNanos { }
-                inputFieldRequester.bringIntoView()
-            }
         }
     }
 
@@ -226,263 +194,199 @@ fun FrictionGateScreen(
         }
     ) { innerPadding ->
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp),
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Spacer(Modifier.height(8.dp))
-
-                // Progress indicator
-                LinearProgressIndicator(
-                    progress = { (currentWordIndex.toFloat()) / totalCount },
-                    modifier = Modifier.fillMaxWidth(),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-
                 Text(
-                    if (useChineseMode)
-                        stringResource(R.string.friction_gate_progress_chinese, currentWordIndex + 1, totalCount)
-                    else
-                        stringResource(R.string.friction_gate_progress, currentWordIndex + 1, totalCount),
-                    style = MaterialTheme.typography.labelMedium,
+                    pluralStringResource(
+                        R.plurals.friction_gate_words_remaining,
+                        totalCount - currentWordIndex,
+                        totalCount - currentWordIndex
+                    ),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    if (currentWordIndex == 0) stringResource(R.string.friction_gate_type_each_word)
+                    else stringResource(R.string.friction_gate_completed, currentWordIndex, totalCount),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                // -- Override card (iOS-style dialog look) --
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(4.dp, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                // Word to type
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        if (!isBlockMode) {
-                            // In-app mode: show generic title
+                    if (useChineseMode) {
+                        val cw = chineseWords[currentWordIndex]
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                             Text(
-                                stringResource(R.string.friction_gate_title),
-                                style = MaterialTheme.typography.titleMedium,
+                                cw.meaning,
+                                style = MaterialTheme.typography.displaySmall,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        }
-
-                        // Instruction with context
-                        Text(
-                            if (useChineseMode) {
-                                if (isBlockMode && scheduleName != null)
-                                    stringResource(R.string.block_gate_instruction_chinese, scheduleName)
-                                else
-                                    stringResource(R.string.override_instruction_chinese)
-                            } else {
-                                if (isBlockMode && scheduleName != null)
-                                    stringResource(R.string.block_gate_instruction, scheduleName)
-                                else
-                                    stringResource(R.string.override_instruction)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        // Challenge phrase in monospace code block
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
                             Text(
-                                challengePhrase,
-                                modifier = Modifier.padding(14.dp),
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 14.sp,
-                                lineHeight = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                cw.character,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-
-                        // Current word highlight
-                        Text(
-                            if (useChineseMode)
-                                stringResource(R.string.friction_gate_progress_chinese, currentWordIndex + 1, totalCount)
-                            else
-                                stringResource(R.string.friction_gate_progress, currentWordIndex + 1, totalCount),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-
-                        // Word to type
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                        ) {
-                            if (useChineseMode) {
-                                val cw = chineseWords[currentWordIndex]
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        cw.meaning,
-                                        style = MaterialTheme.typography.displaySmall,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        cw.character,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    if (isError || pinyinManuallyRevealed) {
-                                        Text(
-                                            cw.pinyin,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            textAlign = TextAlign.Center,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    } else {
-                                        TextButton(onClick = { pinyinManuallyRevealed = true }) {
-                                            Text(stringResource(R.string.friction_gate_reveal_pinyin))
-                                        }
-                                    }
-                                    IconButton(onClick = {
-                                        tts?.speak(cw.character, TextToSpeech.QUEUE_FLUSH, null, null)
-                                    }) {
-                                        Icon(
-                                            Icons.Rounded.VolumeUp,
-                                            contentDescription = "Listen",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            } else {
+                            if (isError || pinyinManuallyRevealed) {
                                 Text(
-                                    words[currentWordIndex],
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
+                                    cw.pinyin,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
                                     textAlign = TextAlign.Center,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                            } else {
+                                TextButton(onClick = { pinyinManuallyRevealed = true }) {
+                                    Text(stringResource(R.string.friction_gate_reveal_pinyin))
+                                }
+                            }
+                            IconButton(onClick = {
+                                tts?.speak(cw.character, TextToSpeech.QUEUE_FLUSH, null, null)
+                            }) {
+                                Icon(
+                                    Icons.Rounded.VolumeUp,
+                                    contentDescription = "Listen",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
-
-                        // Input field
-                        OutlinedTextField(
-                            value = userInput,
-                            onValueChange = { newValue ->
-                                isError = false
-                                // English words are shown one at a time, but people often
-                                // type a space and carry on with the next word. Treat a
-                                // space as "submit this word" and never keep it in the field.
-                                // Pinyin is left alone: syllables may be typed with spaces.
-                                if (!useChineseMode && newValue.any { it.isWhitespace() }) {
-                                    userInput = newValue.filterNot { it.isWhitespace() }
-                                    if (userInput.isNotEmpty()) checkWord()
-                                } else {
-                                    userInput = newValue
-                                }
-                            },
-                            placeholder = {
-                                Text(
-                                    if (useChineseMode) stringResource(R.string.friction_gate_pinyin_hint)
-                                    else stringResource(R.string.type_here_hint),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
+                    } else {
+                        Text(
+                            words[currentWordIndex],
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .bringIntoViewRequester(inputFieldRequester)
-                                .focusRequester(focusRequester)
-                                .onFocusChanged { isInputFocused = it.isFocused },
-                            shape = RoundedCornerShape(10.dp),
-                            singleLine = true,
-                            isError = isError,
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = ImeAction.Done,
-                                autoCorrectEnabled = false,
-                                keyboardType = KeyboardType.Password
-                            ),
-                            keyboardActions = KeyboardActions(onDone = { checkWord() }),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
+                                .padding(16.dp),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.primary
                         )
-
-                        // Buttons row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = onBackPressed,
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.onSurface
-                                )
-                            ) {
-                                Text(
-                                    stringResource(if (isBlockMode) R.string.keep_blocked else R.string.cancel),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            Button(
-                                onClick = { checkWord() },
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                enabled = userInput.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            ) {
-                                Text(
-                                    if (currentWordIndex >= totalCount - 1) stringResource(R.string.override_button)
-                                    else stringResource(R.string.friction_gate_next),
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
                 }
 
                 if (useChineseMode) {
-                    val minutes = (weeklyStats.totalDurationMs / 60_000L).toInt()
                     Text(
-                        text = stringResource(
+                        stringResource(
                             R.string.friction_gate_weekly_stats,
                             weeklyStats.wordCount,
-                            minutes
+                            (weeklyStats.totalDurationMs / 60_000L).toInt()
                         ),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            // Input and actions stay above the keyboard while the prompt can scroll.
+            OutlinedTextField(
+                value = userInput,
+                onValueChange = { newValue ->
+                    isError = false
+                    // English words are shown one at a time, but people often
+                    // type a space and carry on with the next word. Treat a
+                    // space as "submit this word" and never keep it in the field.
+                    // Pinyin is left alone: syllables may be typed with spaces.
+                    if (!useChineseMode && newValue.any { it.isWhitespace() }) {
+                        userInput = newValue.filterNot { it.isWhitespace() }
+                        if (userInput.isNotEmpty()) checkWord()
+                    } else {
+                        userInput = newValue
+                    }
+                },
+                placeholder = {
+                    Text(
+                        if (useChineseMode) stringResource(R.string.friction_gate_pinyin_hint)
+                        else stringResource(R.string.type_here_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+                shape = RoundedCornerShape(10.dp),
+                singleLine = true,
+                isError = isError,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Done,
+                    autoCorrectEnabled = false,
+                    keyboardType = KeyboardType.Password
+                ),
+                keyboardActions = KeyboardActions(onDone = { checkWord() }),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            )
+
+            // Buttons row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onBackPressed,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Text(
+                        stringResource(if (isBlockMode) R.string.keep_blocked else R.string.cancel),
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Button(
+                    onClick = { checkWord() },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    enabled = userInput.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        if (currentWordIndex >= totalCount - 1) {
+                            if (isBlockMode && unlockDurationText != null)
+                                stringResource(R.string.friction_gate_unlock_duration, unlockDurationText)
+                            else stringResource(R.string.override_button)
+                        }
+                        else stringResource(R.string.friction_gate_next),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+        }
     }
 }

@@ -121,7 +121,14 @@
     <string name="friction_gate_error">That doesn\'t match. Try again.</string>
     <string name="friction_gate_pinyin_hint">Type the pinyin\u2026</string>
     <string name="friction_gate_reveal_pinyin">Reveal pinyin</string>
-    <string name="friction_gate_next">Next</string>
+    <string name="friction_gate_next">Next word</string>
+    <string name="friction_gate_unlock_duration">Unlock for %1$s</string>
+    <string name="friction_gate_type_each_word">Type each word to continue.</string>
+    <string name="friction_gate_completed">%1$d of %2$d completed</string>
+    <plurals name="friction_gate_words_remaining">
+        <item quantity="one">%d word remaining</item>
+        <item quantity="other">%d words remaining</item>
+    </plurals>
     <string name="friction_gate_finish">Finish</string>
     <string name="friction_gate_weekly_stats">This week: %1$d words \u00b7 ~%2$d min typing</string>
 
