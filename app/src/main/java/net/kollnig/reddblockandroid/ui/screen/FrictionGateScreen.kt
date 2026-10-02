@@ -384,9 +384,18 @@ fun FrictionGateScreen(
                         // Input field
                         OutlinedTextField(
                             value = userInput,
-                            onValueChange = {
-                                userInput = it
+                            onValueChange = { newValue ->
                                 isError = false
+                                // English words are shown one at a time, but people often
+                                // type a space and carry on with the next word. Treat a
+                                // space as "submit this word" and never keep it in the field.
+                                // Pinyin is left alone: syllables may be typed with spaces.
+                                if (!useChineseMode && newValue.any { it.isWhitespace() }) {
+                                    userInput = newValue.filterNot { it.isWhitespace() }
+                                    if (userInput.isNotEmpty()) checkWord()
+                                } else {
+                                    userInput = newValue
+                                }
                             },
                             placeholder = {
                                 Text(
