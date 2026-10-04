@@ -116,7 +116,7 @@
     <string name="keep_blocked">Keep blocked</string>
     <string name="block_gate_title">Unlock %s</string>
     <string name="block_gate_title_duration">Unlock %1$s for %2$s</string>
-    <string name="block_gate_instruction">Blocked by your \"%1$s\" schedule. To unlock, type the following:</string>
+    <string name="block_gate_schedule">Blocked by your \"%1$s\" schedule.</string>
     <string name="friction_gate_input_label">Type the word above</string>
     <string name="friction_gate_error">That doesn\'t match. Try again.</string>
     <string name="friction_gate_pinyin_hint">Type the pinyin\u2026</string>
@@ -173,7 +173,6 @@
     <string name="override_description">Blocks %1$d websites (%2$s)</string>
     <string name="override_instruction">To cancel this block early, type the following:</string>
     <string name="override_instruction_chinese">To proceed, type the pinyin for each character:</string>
-    <string name="block_gate_instruction_chinese">Blocked by your \"%1$s\" schedule. To unlock, type the pinyin for each character:</string>
     <string name="override_button">Override</string>
     <string name="type_here_hint">Type here…</string>
     <string name="footer_text">Made with ❤\uFE0F by digitalhabits.org</string>

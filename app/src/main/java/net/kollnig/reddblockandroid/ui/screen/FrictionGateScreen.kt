@@ -220,6 +220,14 @@ fun FrictionGateScreen(
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
+                if (isBlockMode && scheduleName != null) {
+                    Text(
+                        stringResource(R.string.block_gate_schedule, scheduleName),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Text(
                     if (currentWordIndex == 0) stringResource(R.string.friction_gate_type_each_word)
                     else stringResource(R.string.friction_gate_completed, currentWordIndex, totalCount),
