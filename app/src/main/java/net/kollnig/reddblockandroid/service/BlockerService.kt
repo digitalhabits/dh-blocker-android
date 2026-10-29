@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.UnlockActivity
 import net.kollnig.reddblockandroid.schedule.Schedules
 
@@ -23,6 +24,11 @@ class BlockerService : AccessibilityService() {
     private var lastBlockedTime: Long = 0
     private val APP_BLOCK_THROTTLE_MS = 2000L
 
+    private var lastSettingsCheckTime: Long = 0
+    private var lastSettingsGateTime: Long = 0
+    private val SETTINGS_CHECK_THROTTLE_MS = 500L
+    private var cachedForceStopLabel: Pair<java.util.Locale, String>? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
 
@@ -36,10 +42,18 @@ class BlockerService : AccessibilityService() {
         val keyguardManager = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
         if (keyguardManager.isKeyguardLocked) return
 
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
+        val isStateChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && !isStateChange) return
 
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
+
+        // Force-stopping the blocker also disables its accessibility service, so
+        // while any block is active, gate our own App info page in Settings.
+        if (pkg == SETTINGS_PACKAGE && guardOwnAppInfoPage(checkImmediately = isStateChange)) return
+
+        // Window state changes are only needed for the Settings guard above.
+        if (isStateChange) return
 
         // Check for website blocking in supported browsers.
         // If the browser app itself is blocked, skip URL-based website handling
@@ -82,6 +96,74 @@ class BlockerService : AccessibilityService() {
                 launchFrictionGate(blockingSchedule.id, blockingSchedule.name, appLabel, isWebsite = false)
             }
         }
+    }
+
+    /**
+     * Shows the friction gate if our own App info page (the one with "Force
+     * stop" and "Uninstall") is open while a schedule is active. Returns true
+     * when the page is being gated.
+     */
+    private fun guardOwnAppInfoPage(checkImmediately: Boolean): Boolean {
+        val now = System.currentTimeMillis()
+        // Content changes in Settings are frequent, so throttle them; a window
+        // state change (the page opening) is always checked straight away.
+        if (!checkImmediately && now - lastSettingsCheckTime < SETTINGS_CHECK_THROTTLE_MS) return false
+        lastSettingsCheckTime = now
+
+        val schedule = Schedules.findActiveSchedule() ?: return false
+        if (!isOwnAppInfoPageShowing()) return false
+        if (now - lastSettingsGateTime < APP_BLOCK_THROTTLE_MS) return true
+        lastSettingsGateTime = now
+
+        Log.d(TAG, "Guarding own App info page; schedule ${schedule.name} is active")
+        launchFrictionGate(
+            schedule.id,
+            schedule.name,
+            getString(R.string.own_settings_target, getString(R.string.launcher_name)),
+            isWebsite = false
+        )
+        return true
+    }
+
+    private fun isOwnAppInfoPageShowing(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        try {
+            if (root.packageName?.toString() != SETTINGS_PACKAGE) return false
+            val ownLabel = applicationInfo.loadLabel(packageManager).toString()
+            return containsText(root, ownLabel) && containsText(root, forceStopLabel())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error inspecting Settings window", e)
+            return false
+        } finally {
+            root.recycle()
+        }
+    }
+
+    private fun containsText(
+        root: android.view.accessibility.AccessibilityNodeInfo,
+        text: String
+    ): Boolean {
+        val nodes = root.findAccessibilityNodeInfosByText(text)
+        nodes.forEach { it.recycle() }
+        return nodes.isNotEmpty()
+    }
+
+    /** The "Force stop" button label in the device's language, read from the
+     *  Settings app's own resources so the guard works in every locale. */
+    private fun forceStopLabel(): String {
+        val locale = resources.configuration.locales[0]
+        cachedForceStopLabel?.let { (cachedLocale, label) ->
+            if (cachedLocale == locale) return label
+        }
+        val label = try {
+            val res = packageManager.getResourcesForApplication(SETTINGS_PACKAGE)
+            val id = res.getIdentifier("force_stop", "string", SETTINGS_PACKAGE)
+            if (id != 0) res.getString(id) else null
+        } catch (_: Exception) {
+            null
+        } ?: "Force stop"
+        cachedForceStopLabel = locale to label
+        return label
     }
 
     private fun launchFrictionGate(
@@ -291,5 +373,6 @@ class BlockerService : AccessibilityService() {
 
     companion object {
         private const val TAG = "BlockerService"
+        private const val SETTINGS_PACKAGE = "com.android.settings"
     }
 }

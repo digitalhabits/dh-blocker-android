@@ -115,6 +115,7 @@
     <string name="close">Close</string>
     <string name="keep_blocked">Keep blocked</string>
     <string name="block_gate_title">Unlock %s</string>
+    <string name="own_settings_target">%s settings</string>
     <string name="block_gate_title_duration">Unlock %1$s for %2$s</string>
     <string name="block_gate_schedule">Blocked by your \"%1$s\" schedule.</string>
     <string name="friction_gate_input_label">Type the word above</string>

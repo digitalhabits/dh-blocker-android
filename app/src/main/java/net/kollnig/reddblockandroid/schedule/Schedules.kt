@@ -384,6 +384,24 @@ object Schedules {
         }
     }
 
+    /**
+     * Find any schedule that is blocking right now, regardless of what it
+     * blocks, or null if none is. Used to guard the blocker itself (e.g. its
+     * App info page with "Force stop") while a block is in progress.
+     */
+    fun findActiveSchedule(): Schedule? {
+        val sessions = getActiveSessions()
+        return getAll().filter { it.isEnabled }.firstOrNull { schedule ->
+            when (schedule.timing.type) {
+                ScheduleTiming.ScheduleType.MANUAL ->
+                    sessions.any { it.scheduleId == schedule.id }
+                ScheduleTiming.ScheduleType.DAILY,
+                ScheduleTiming.ScheduleType.WEEKLY ->
+                    ScheduleManager.isScheduleActiveNow(schedule)
+            }
+        }
+    }
+
     /** Well-known social media app package names. */
     val SOCIAL_MEDIA_PACKAGES = listOf(
         "com.instagram.android",
