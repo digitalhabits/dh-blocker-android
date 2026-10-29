@@ -9,6 +9,7 @@ import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.UnlockActivity
 import net.kollnig.reddblockandroid.schedule.Schedules
 
+import net.kollnig.reddblockandroid.util.TamperProtection
 import net.kollnig.reddblockandroid.util.isPrefsInitialized
 import net.kollnig.reddblockandroid.util.prefs
 import androidx.core.net.toUri
@@ -49,8 +50,8 @@ class BlockerService : AccessibilityService() {
         if (pkg == packageName) return
 
         // Force-stopping the blocker also disables its accessibility service, so
-        // while any block is active, gate our own App info page in Settings.
-        if (pkg == SETTINGS_PACKAGE && guardOwnAppInfoPage(checkImmediately = isStateChange)) return
+        // while any block is active, gate our own pages in Settings.
+        if (pkg in SETTINGS_PACKAGES && guardOwnSettingsPages(checkImmediately = isStateChange)) return
 
         // Window state changes are only needed for the Settings guard above.
         if (isStateChange) return
@@ -99,11 +100,13 @@ class BlockerService : AccessibilityService() {
     }
 
     /**
-     * Shows the friction gate if our own App info page (the one with "Force
-     * stop" and "Uninstall") is open while a schedule is active. Returns true
-     * when the page is being gated.
+     * With tamper protection on, shows the friction gate if our own App info
+     * page (Force stop, Uninstall) or our accessibility settings page (the
+     * toggle that turns blocking off) is open while a schedule is active.
+     * Returns true when the page is being gated.
      */
-    private fun guardOwnAppInfoPage(checkImmediately: Boolean): Boolean {
+    private fun guardOwnSettingsPages(checkImmediately: Boolean): Boolean {
+        if (!TamperProtection.isEnabled) return false
         val now = System.currentTimeMillis()
         // Content changes in Settings are frequent, so throttle them; a window
         // state change (the page opening) is always checked straight away.
@@ -111,27 +114,33 @@ class BlockerService : AccessibilityService() {
         lastSettingsCheckTime = now
 
         val schedule = Schedules.findActiveSchedule() ?: return false
-        if (!isOwnAppInfoPageShowing()) return false
+        if (!isOwnSettingsPageShowing()) return false
         if (now - lastSettingsGateTime < APP_BLOCK_THROTTLE_MS) return true
         lastSettingsGateTime = now
 
-        Log.d(TAG, "Guarding own App info page; schedule ${schedule.name} is active")
+        Log.d(TAG, "Guarding own settings page; schedule ${schedule.name} is active")
         launchFrictionGate(
             schedule.id,
             schedule.name,
             getString(R.string.own_settings_target, getString(R.string.launcher_name)),
             isWebsite = false,
-            minWordCount = SETTINGS_FRICTION_WORD_COUNT
+            wordCount = TamperProtection.wordCount
         )
         return true
     }
 
-    private fun isOwnAppInfoPageShowing(): Boolean {
+    private fun isOwnSettingsPageShowing(): Boolean {
         val root = rootInActiveWindow ?: return false
         try {
-            if (root.packageName?.toString() != SETTINGS_PACKAGE) return false
+            if (root.packageName?.toString() !in SETTINGS_PACKAGES) return false
             val ownLabel = applicationInfo.loadLabel(packageManager).toString()
-            return containsText(root, ownLabel) && containsText(root, forceStopLabel())
+            if (!containsText(root, ownLabel)) return false
+            // App info page
+            if (containsText(root, forceStopLabel())) return true
+            // Accessibility page: Settings shows our service description there,
+            // and on most versions a "Use <app>" toggle.
+            if (containsText(root, getString(R.string.accessibility_service_summary))) return true
+            return accessibilityToggleLabels(ownLabel).any { containsText(root, it) }
         } catch (e: Exception) {
             Log.e(TAG, "Error inspecting Settings window", e)
             return false
@@ -149,6 +158,20 @@ class BlockerService : AccessibilityService() {
         return nodes.isNotEmpty()
     }
 
+    /** Labels of the "Use <app>" toggle on our accessibility settings page,
+     *  formatted from the Settings app's own strings (renamed across versions). */
+    private fun accessibilityToggleLabels(ownLabel: String): List<String> =
+        listOf("accessibility_service_primary_switch_title", "accessibility_service_master_switch_title")
+            .mapNotNull { name -> settingsString(name)?.let { runCatching { it.format(ownLabel) }.getOrNull() } }
+
+    private fun settingsString(name: String): String? = try {
+        val res = packageManager.getResourcesForApplication(SETTINGS_PACKAGE)
+        val id = res.getIdentifier(name, "string", SETTINGS_PACKAGE)
+        if (id != 0) res.getString(id) else null
+    } catch (_: Exception) {
+        null
+    }
+
     /** The "Force stop" button label in the device's language, read from the
      *  Settings app's own resources so the guard works in every locale. */
     private fun forceStopLabel(): String {
@@ -156,13 +179,7 @@ class BlockerService : AccessibilityService() {
         cachedForceStopLabel?.let { (cachedLocale, label) ->
             if (cachedLocale == locale) return label
         }
-        val label = try {
-            val res = packageManager.getResourcesForApplication(SETTINGS_PACKAGE)
-            val id = res.getIdentifier("force_stop", "string", SETTINGS_PACKAGE)
-            if (id != 0) res.getString(id) else null
-        } catch (_: Exception) {
-            null
-        } ?: "Force stop"
+        val label = settingsString("force_stop") ?: "Force stop"
         cachedForceStopLabel = locale to label
         return label
     }
@@ -172,14 +189,14 @@ class BlockerService : AccessibilityService() {
         scheduleName: String,
         blockedTarget: String,
         isWebsite: Boolean,
-        minWordCount: Int = 0
+        wordCount: Int = 0
     ) {
         val intent = Intent(this, UnlockActivity::class.java).apply {
             putExtra(UnlockActivity.EXTRA_SCHEDULE_ID, scheduleId)
             putExtra(UnlockActivity.EXTRA_SCHEDULE_NAME, scheduleName)
             putExtra(UnlockActivity.EXTRA_BLOCKED_TARGET, blockedTarget)
             putExtra(UnlockActivity.EXTRA_IS_WEBSITE, isWebsite)
-            putExtra(UnlockActivity.EXTRA_MIN_WORD_COUNT, minWordCount)
+            putExtra(UnlockActivity.EXTRA_WORD_COUNT, wordCount)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
@@ -377,7 +394,8 @@ class BlockerService : AccessibilityService() {
     companion object {
         private const val TAG = "BlockerService"
         private const val SETTINGS_PACKAGE = "com.android.settings"
-        /** Unlocking our own App info page (Force stop) must be harder than an ordinary block. */
-        private const val SETTINGS_FRICTION_WORD_COUNT = 20
+        /** Settings apps that host our App info or accessibility page. Samsung's
+         *  One UI shows accessibility settings in its own package. */
+        private val SETTINGS_PACKAGES = setOf(SETTINGS_PACKAGE, "com.samsung.accessibility")
     }
 }
