@@ -120,7 +120,8 @@ class BlockerService : AccessibilityService() {
             schedule.id,
             schedule.name,
             getString(R.string.own_settings_target, getString(R.string.launcher_name)),
-            isWebsite = false
+            isWebsite = false,
+            minWordCount = SETTINGS_FRICTION_WORD_COUNT
         )
         return true
     }
@@ -170,13 +171,15 @@ class BlockerService : AccessibilityService() {
         scheduleId: String,
         scheduleName: String,
         blockedTarget: String,
-        isWebsite: Boolean
+        isWebsite: Boolean,
+        minWordCount: Int = 0
     ) {
         val intent = Intent(this, UnlockActivity::class.java).apply {
             putExtra(UnlockActivity.EXTRA_SCHEDULE_ID, scheduleId)
             putExtra(UnlockActivity.EXTRA_SCHEDULE_NAME, scheduleName)
             putExtra(UnlockActivity.EXTRA_BLOCKED_TARGET, blockedTarget)
             putExtra(UnlockActivity.EXTRA_IS_WEBSITE, isWebsite)
+            putExtra(UnlockActivity.EXTRA_MIN_WORD_COUNT, minWordCount)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
@@ -374,5 +377,7 @@ class BlockerService : AccessibilityService() {
     companion object {
         private const val TAG = "BlockerService"
         private const val SETTINGS_PACKAGE = "com.android.settings"
+        /** Unlocking our own App info page (Force stop) must be harder than an ordinary block. */
+        private const val SETTINGS_FRICTION_WORD_COUNT = 20
     }
 }

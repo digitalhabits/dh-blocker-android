@@ -22,6 +22,8 @@ class UnlockActivity : ComponentActivity() {
         const val EXTRA_SCHEDULE_NAME = "schedule_name"
         const val EXTRA_BLOCKED_TARGET = "blocked_target"
         const val EXTRA_IS_WEBSITE = "is_website"
+        /** Raises the schedule's word count for targets that need more friction. */
+        const val EXTRA_MIN_WORD_COUNT = "min_word_count"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +34,7 @@ class UnlockActivity : ComponentActivity() {
         val scheduleName = intent.getStringExtra(EXTRA_SCHEDULE_NAME)
         val blockedTarget = intent.getStringExtra(EXTRA_BLOCKED_TARGET)
         val isWebsite = intent.getBooleanExtra(EXTRA_IS_WEBSITE, false)
+        val minWordCount = intent.getIntExtra(EXTRA_MIN_WORD_COUNT, 0)
         val schedule = scheduleId?.let { Schedules.get(it) }
 
         if (schedule == null || !schedule.isEnabled) {
@@ -44,7 +47,7 @@ class UnlockActivity : ComponentActivity() {
         setContent {
             ReDDBlockAndroidTheme {
                 FrictionGateScreen(
-                    wordCount = schedule.frictionWordCount,
+                    wordCount = maxOf(schedule.frictionWordCount, minWordCount),
                     unlockDurationText = unlockDurationText,
                     scheduleName = scheduleName ?: schedule.name,
                     blockedTargetLabel = blockedTarget,

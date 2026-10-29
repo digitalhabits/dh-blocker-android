@@ -12,7 +12,7 @@ Built by computer scientists at the University of Oxford (Dr Ulrik Lyngs) and th
 - **One-Off Blocks** — Quick blocks for immediate focus sessions
 - **Scheduled Blocks** — Set recurring blocks on specific days/times (e.g., block social media Mon–Fri 9am–5pm)
 - **Override Protection** — Configurable word-entry friction prevents impulsive unblocking
-- **Tamper Protection** — While a block is active, opening the blocker's App info page in Settings (Force stop, Uninstall) shows the friction gate
+- **Tamper Protection** — While a block is active, opening the blocker's App info page in Settings (Force stop, Uninstall) shows the friction gate with at least 20 words
 - **Boot Persistence** — Schedules resume automatically after device restart
 - **Material You** — Modern Material 3 design with dynamic colors
 
