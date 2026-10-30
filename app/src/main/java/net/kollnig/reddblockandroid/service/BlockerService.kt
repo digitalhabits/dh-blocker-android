@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.UnlockActivity
 import net.kollnig.reddblockandroid.schedule.Schedules
@@ -164,10 +165,25 @@ class BlockerService : AccessibilityService() {
     }
 
     private fun ownSettingsPageWindowId(): Int? {
-        val root = rootInActiveWindow ?: return null
+        // A Settings dialog such as "Turn off <app>?" becomes the active window
+        // while our page stays beneath it, so inspect every window on screen.
+        val roots = try {
+            windows.mapNotNull { it.root }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not list windows", e)
+            emptyList()
+        }.ifEmpty { listOfNotNull(rootInActiveWindow) }
+        try {
+            val ownLabel = applicationInfo.loadLabel(packageManager).toString()
+            return roots.firstNotNullOfOrNull { ownSettingsPageWindowId(it, ownLabel) }
+        } finally {
+            roots.forEach { it.recycle() }
+        }
+    }
+
+    private fun ownSettingsPageWindowId(root: AccessibilityNodeInfo, ownLabel: String): Int? {
         try {
             if (root.packageName?.toString() !in SETTINGS_PACKAGES) return null
-            val ownLabel = applicationInfo.loadLabel(packageManager).toString()
             if (!root.containsAccessibilityText(ownLabel)) return null
             // App info page
             if (root.containsAccessibilityText(forceStopLabel())) return root.windowId
@@ -180,8 +196,6 @@ class BlockerService : AccessibilityService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error inspecting Settings window", e)
             return null
-        } finally {
-            root.recycle()
         }
     }
 
