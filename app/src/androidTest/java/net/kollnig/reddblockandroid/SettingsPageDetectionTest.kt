@@ -25,8 +25,11 @@ class SettingsPageDetectionTest {
         val forceStop = if (forceStopId != 0) resources.getString(forceStopId) else "Force stop"
 
         try {
+            // Request a fresh page: older Android can otherwise bring forward
+            // the safe task left behind by a previous tamper-protection test.
             context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                Uri.parse("package:${context.packageName}")).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
             instrumentation.uiAutomation.waitForIdle(500, 5_000)
 
             // On Compose Settings, findAccessibilityNodeInfosByText returns no

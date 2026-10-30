@@ -29,6 +29,7 @@ class BlockerService : AccessibilityService() {
 
     private var lastSettingsCheckTime: Long = 0
     private var lastSettingsGateTime: Long = 0
+    private var lastSettingsGateWindowId: Int? = null
     private val SETTINGS_CHECK_THROTTLE_MS = 500L
     private var cachedForceStopLabel: Pair<java.util.Locale, String>? = null
 
@@ -116,7 +117,15 @@ class BlockerService : AccessibilityService() {
         lastSettingsCheckTime = now
 
         val schedule = Schedules.findActiveSchedule() ?: return false
-        if (!isOwnSettingsPageShowing()) return false
+        val windowId = ownSettingsPageWindowId() ?: return false
+        // Older Settings can deliver queued events from the window we just
+        // replaced. Redirecting again would cover the gate with Settings home.
+        // A newly opened window must still be guarded during this interval.
+        if (windowId == lastSettingsGateWindowId &&
+            now - lastSettingsGateTime < APP_BLOCK_THROTTLE_MS
+        ) return true
+        lastSettingsGateWindowId = windowId
+        lastSettingsGateTime = now
         // Replace the Settings task before covering it: Back and Recents must
         // not retain the protected page beneath the friction gate.
         try {
@@ -133,9 +142,6 @@ class BlockerService : AccessibilityService() {
             Log.e(TAG, "Could not reset Settings navigation", e)
             performGlobalAction(GLOBAL_ACTION_HOME)
         }
-        if (now - lastSettingsGateTime < APP_BLOCK_THROTTLE_MS) return true
-        lastSettingsGateTime = now
-
         Log.d(TAG, "Guarding own settings page; schedule ${schedule.name} is active")
         launchFrictionGate(
             schedule.id,
@@ -148,21 +154,23 @@ class BlockerService : AccessibilityService() {
         return true
     }
 
-    private fun isOwnSettingsPageShowing(): Boolean {
-        val root = rootInActiveWindow ?: return false
+    private fun ownSettingsPageWindowId(): Int? {
+        val root = rootInActiveWindow ?: return null
         try {
-            if (root.packageName?.toString() !in SETTINGS_PACKAGES) return false
+            if (root.packageName?.toString() !in SETTINGS_PACKAGES) return null
             val ownLabel = applicationInfo.loadLabel(packageManager).toString()
-            if (!root.containsAccessibilityText(ownLabel)) return false
+            if (!root.containsAccessibilityText(ownLabel)) return null
             // App info page
-            if (root.containsAccessibilityText(forceStopLabel())) return true
+            if (root.containsAccessibilityText(forceStopLabel())) return root.windowId
             // Accessibility page: Settings shows our service description there,
             // and on most versions a "Use <app>" toggle.
-            if (root.containsAccessibilityText(getString(R.string.accessibility_service_summary))) return true
-            return accessibilityToggleLabels(ownLabel).any { root.containsAccessibilityText(it) }
+            if (root.containsAccessibilityText(getString(R.string.accessibility_service_summary))) return root.windowId
+            return root.windowId.takeIf {
+                accessibilityToggleLabels(ownLabel).any { root.containsAccessibilityText(it) }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error inspecting Settings window", e)
-            return false
+            return null
         } finally {
             root.recycle()
         }
