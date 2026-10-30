@@ -12,7 +12,7 @@ Built by computer scientists at the University of Oxford (Dr Ulrik Lyngs) and th
 - **One-Off Blocks** — Quick blocks for immediate focus sessions
 - **Scheduled Blocks** — Set recurring blocks on specific days/times (e.g., block social media Mon–Fri 9am–5pm)
 - **Override Protection** — Configurable word-entry friction prevents impulsive unblocking
-- **Tamper Protection** — Optional (off by default, in the settings menu): while a block is active, opening the blocker's App info page (Force stop, Uninstall) or its accessibility settings shows a friction gate with a configurable number of words
+- **Tamper Protection** — Optional (off by default, in the settings menu): while a block is active, opening the blocker's App info page (Force stop, Uninstall) or its accessibility settings resets Settings navigation before showing a friction gate with a configurable number of words. Completing or cancelling the gate does not reopen the protected page. Back/Recents protection has been tested on a Pixel 9; other Settings implementations may differ, and rapid taps before detection remain possible.
 - **Boot Persistence** — Schedules resume automatically after device restart
 - **Material You** — Modern Material 3 design with dynamic colors
 

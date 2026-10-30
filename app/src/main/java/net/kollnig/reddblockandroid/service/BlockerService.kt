@@ -3,6 +3,7 @@ package net.kollnig.reddblockandroid.service
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import net.kollnig.reddblockandroid.R
@@ -116,6 +117,22 @@ class BlockerService : AccessibilityService() {
 
         val schedule = Schedules.findActiveSchedule() ?: return false
         if (!isOwnSettingsPageShowing()) return false
+        // Replace the Settings task before covering it: Back and Recents must
+        // not retain the protected page beneath the friction gate.
+        try {
+            // Recent Pixels give Settings home its own task affinity. Reset the
+            // normal Settings task to the harmless accessibility overview too,
+            // otherwise App info / service details remain available in Recents.
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            })
+            startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not reset Settings navigation", e)
+            performGlobalAction(GLOBAL_ACTION_HOME)
+        }
         if (now - lastSettingsGateTime < APP_BLOCK_THROTTLE_MS) return true
         lastSettingsGateTime = now
 
@@ -125,7 +142,8 @@ class BlockerService : AccessibilityService() {
             schedule.name,
             getString(R.string.own_settings_target, getString(R.string.launcher_name)),
             isWebsite = false,
-            wordCount = TamperProtection.wordCount
+            wordCount = TamperProtection.wordCount,
+            isSettings = true
         )
         return true
     }
@@ -181,7 +199,8 @@ class BlockerService : AccessibilityService() {
         scheduleName: String,
         blockedTarget: String,
         isWebsite: Boolean,
-        wordCount: Int = 0
+        wordCount: Int = 0,
+        isSettings: Boolean = false
     ) {
         val intent = Intent(this, UnlockActivity::class.java).apply {
             putExtra(UnlockActivity.EXTRA_SCHEDULE_ID, scheduleId)
@@ -189,6 +208,7 @@ class BlockerService : AccessibilityService() {
             putExtra(UnlockActivity.EXTRA_BLOCKED_TARGET, blockedTarget)
             putExtra(UnlockActivity.EXTRA_IS_WEBSITE, isWebsite)
             putExtra(UnlockActivity.EXTRA_WORD_COUNT, wordCount)
+            putExtra(UnlockActivity.EXTRA_IS_SETTINGS, isSettings)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)

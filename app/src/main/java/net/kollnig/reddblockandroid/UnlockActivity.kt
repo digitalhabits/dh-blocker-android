@@ -13,7 +13,8 @@ import net.kollnig.reddblockandroid.ui.theme.ReDDBlockAndroidTheme
  * Standalone activity launched by BlockerService when an app or website is blocked.
  * Shows the friction gate; on completion, temporarily disables the
  * schedule that caused the block. When this activity finishes, Android
- * returns to the blocked app/browser automatically.
+ * returns to the blocked app/browser automatically, or Settings home for a
+ * tamper-protection gate. Protected Settings pages are never reopened.
  */
 class UnlockActivity : ComponentActivity() {
 
@@ -24,6 +25,7 @@ class UnlockActivity : ComponentActivity() {
         const val EXTRA_IS_WEBSITE = "is_website"
         /** Overrides the schedule's word count, e.g. for tamper protection. */
         const val EXTRA_WORD_COUNT = "word_count"
+        const val EXTRA_IS_SETTINGS = "is_settings"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,6 +36,7 @@ class UnlockActivity : ComponentActivity() {
         val scheduleName = intent.getStringExtra(EXTRA_SCHEDULE_NAME)
         val blockedTarget = intent.getStringExtra(EXTRA_BLOCKED_TARGET)
         val isWebsite = intent.getBooleanExtra(EXTRA_IS_WEBSITE, false)
+        val isSettings = intent.getBooleanExtra(EXTRA_IS_SETTINGS, false)
         val wordCount = intent.getIntExtra(EXTRA_WORD_COUNT, 0)
             .takeIf { it > 0 }
         val schedule = scheduleId?.let { Schedules.get(it) }
@@ -58,10 +61,9 @@ class UnlockActivity : ComponentActivity() {
                         finish()
                     },
                     onBackPressed = {
-                        if (isWebsite) {
-                            // The browser has already been redirected to the focus
-                            // page (digitalhabits.org). Just finish so Android returns to
-                            // it, rather than kicking the user out to the home screen.
+                        if (isWebsite || isSettings) {
+                            // The browser is already on the focus page, and
+                            // Settings has been reset to its home screen.
                             finish()
                         } else {
                             // For blocked apps, returning to them would immediately
