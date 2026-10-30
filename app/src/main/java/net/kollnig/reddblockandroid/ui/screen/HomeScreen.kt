@@ -94,6 +94,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val footerUrl = stringResource(R.string.footer_url)
     var isAccessibilityEnabled by remember { mutableStateOf(context.isAccessibilityServiceEnabled()) }
     var schedules by remember { mutableStateOf(Schedules.getAll()) }
     var refreshTick by remember { mutableIntStateOf(0) }
@@ -370,7 +371,7 @@ fun HomeScreen(
                 stringResource(R.string.footer_text),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { uriHandler.openUri(context.getString(R.string.footer_url)) }
+                    .clickable { uriHandler.openUri(footerUrl) }
                     .padding(top = 18.dp, bottom = 16.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
