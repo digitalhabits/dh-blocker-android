@@ -8,7 +8,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -50,7 +51,9 @@ class FrictionGateKeyboardVisibilityTest {
             composeRule.activity.window.insetsController?.hide(WindowInsets.Type.ime())
         }
         composeRule.waitUntil(5_000) { imeBottom() == 0 }
-        input.performClick()
+        // Reopen through a real tap. A semantics click can merely request the
+        // already-held focus without exercising the text field's touch handler.
+        input.performTouchInput { click() }
         assertInputAboveIme()
         input.assertTextContains("hello")
         val instrumentation = InstrumentationRegistry.getInstrumentation()
