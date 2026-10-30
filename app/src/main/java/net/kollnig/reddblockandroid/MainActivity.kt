@@ -79,19 +79,23 @@ fun AppNavigation() {
             )
         }
 
-        composable("friction_gate") {
-            FrictionGateScreen(
-                wordCount = frictionWordCount,
-                onPassed = {
-                    navController.popBackStack()
-                    pendingFrictionAction?.invoke()
-                    pendingFrictionAction = null
-                },
-                onBackPressed = {
-                    pendingFrictionAction = null
-                    navController.popBackStack()
-                }
-            )
+        composable("friction_gate") { backStackEntry ->
+            // A stricter follow-up gate must start with fresh word progress.
+            key(backStackEntry.id) {
+                FrictionGateScreen(
+                    wordCount = frictionWordCount,
+                    onPassed = {
+                        val completedAction = pendingFrictionAction
+                        pendingFrictionAction = null
+                        navController.popBackStack()
+                        completedAction?.invoke()
+                    },
+                    onBackPressed = {
+                        pendingFrictionAction = null
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
 
     }

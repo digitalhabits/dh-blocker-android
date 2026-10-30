@@ -2,19 +2,21 @@ package net.kollnig.reddblockandroid
 
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import net.kollnig.reddblockandroid.schedule.Schedules
 import net.kollnig.reddblockandroid.ui.screen.FrictionGateScreen
 import net.kollnig.reddblockandroid.ui.theme.ReDDBlockAndroidTheme
+import net.kollnig.reddblockandroid.util.TamperProtection
 
 /**
  * Standalone activity launched by BlockerService when an app or website is blocked.
  * Shows the friction gate; on completion, temporarily disables the
- * schedule that caused the block. When this activity finishes, Android
- * returns to the blocked app/browser automatically, or Settings home for a
- * tamper-protection gate. Protected Settings pages are never reopened.
+ * schedule that caused an app or website block. A tamper-protection gate
+ * instead allows Settings access for one minute without pausing schedules.
+ * Protected Settings pages are never reopened automatically.
  */
 class UnlockActivity : ComponentActivity() {
 
@@ -23,8 +25,6 @@ class UnlockActivity : ComponentActivity() {
         const val EXTRA_SCHEDULE_NAME = "schedule_name"
         const val EXTRA_BLOCKED_TARGET = "blocked_target"
         const val EXTRA_IS_WEBSITE = "is_website"
-        /** Overrides the schedule's word count, e.g. for tamper protection. */
-        const val EXTRA_WORD_COUNT = "word_count"
         const val EXTRA_IS_SETTINGS = "is_settings"
     }
 
@@ -37,28 +37,43 @@ class UnlockActivity : ComponentActivity() {
         val blockedTarget = intent.getStringExtra(EXTRA_BLOCKED_TARGET)
         val isWebsite = intent.getBooleanExtra(EXTRA_IS_WEBSITE, false)
         val isSettings = intent.getBooleanExtra(EXTRA_IS_SETTINGS, false)
-        val wordCount = intent.getIntExtra(EXTRA_WORD_COUNT, 0)
-            .takeIf { it > 0 }
         val schedule = scheduleId?.let { Schedules.get(it) }
 
-        if (schedule == null || !schedule.isEnabled) {
+        if (!isSettings && (schedule == null || !schedule.isEnabled)) {
             finish()
             return
         }
 
-        val unlockDurationText = formatUnlockDuration(schedule.autoReenableMinutes)
+        val requiredWordCount = if (isSettings) TamperProtection.requiredWordCount()
+            else requireNotNull(schedule).frictionWordCount
+        val unlockDurationText = if (isSettings) null
+            else formatUnlockDuration(requireNotNull(schedule).autoReenableMinutes)
 
         setContent {
             ReDDBlockAndroidTheme {
                 FrictionGateScreen(
-                    wordCount = wordCount ?: schedule.frictionWordCount,
+                    wordCount = requiredWordCount,
                     unlockDurationText = unlockDurationText,
-                    scheduleName = scheduleName ?: schedule.name,
-                    blockedTargetLabel = blockedTarget,
+                    scheduleName = if (isSettings) null else scheduleName ?: schedule?.name,
+                    blockedTargetLabel = if (isSettings) null else blockedTarget,
                     isBlockMode = true,
+                    isSettingsAccessMode = isSettings,
                     onPassed = {
-                        Schedules.temporaryUnlock(this@UnlockActivity, schedule.id)
-                        finish()
+                        if (isSettings) {
+                            // A stricter schedule may have started while the user was typing.
+                            if (TamperProtection.requiredWordCount() > requiredWordCount) {
+                                recreate()
+                            } else {
+                                TamperProtection.settingsAccess.grant(requiredWordCount)
+                                startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                })
+                                finish()
+                            }
+                        } else {
+                            Schedules.temporaryUnlock(this@UnlockActivity, requireNotNull(schedule).id)
+                            finish()
+                        }
                     },
                     onBackPressed = {
                         if (isWebsite || isSettings) {

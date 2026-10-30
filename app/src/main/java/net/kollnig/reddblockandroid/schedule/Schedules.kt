@@ -389,9 +389,11 @@ object Schedules {
      * blocks, or null if none is. Used to guard the blocker itself (e.g. its
      * App info page with "Force stop") while a block is in progress.
      */
-    fun findActiveSchedule(): Schedule? {
+    fun findActiveSchedule(): Schedule? = findActiveSchedules().firstOrNull()
+
+    fun findActiveSchedules(): List<Schedule> {
         val sessions = getActiveSessions()
-        return getAll().filter { it.isEnabled }.firstOrNull { schedule ->
+        return getAll().filter { it.isEnabled }.filter { schedule ->
             when (schedule.timing.type) {
                 ScheduleTiming.ScheduleType.MANUAL ->
                     sessions.any { it.scheduleId == schedule.id }

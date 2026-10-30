@@ -3,6 +3,9 @@ package net.kollnig.reddblockandroid.service
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -27,11 +30,22 @@ class BlockerService : AccessibilityService() {
     private var lastBlockedTime: Long = 0
     private val APP_BLOCK_THROTTLE_MS = 2000L
 
-    private var lastSettingsCheckTime: Long = 0
     private var lastSettingsGateTime: Long = 0
     private var lastSettingsGateWindowId: Int? = null
-    private val SETTINGS_CHECK_THROTTLE_MS = 500L
     private var cachedForceStopLabel: Pair<java.util.Locale, String>? = null
+    private val settingsHandler = Handler(Looper.getMainLooper())
+    private val settingsPageChecks = SettingsPageChecks(
+        nowMillis = SystemClock::elapsedRealtime,
+        postDelayed = { runnable, delay -> settingsHandler.postDelayed(runnable, delay) },
+        removeCallbacks = settingsHandler::removeCallbacks,
+        accessWindow = TamperProtection.settingsAccess,
+        requiredWordCount = TamperProtection::requiredWordCount,
+        canCheck = { TamperProtection.isEnabled && !isScreenLocked() },
+        checkActivePage = ::guardOwnSettingsPages,
+    )
+    private val onSettingsAccessGranted: () -> Unit = {
+        settingsPageChecks.request(checkImmediately = true)
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -40,11 +54,16 @@ class BlockerService : AccessibilityService() {
             val deviceContext = createDeviceProtectedStorageContext()
             prefs = deviceContext.getSharedPreferences("prefs", MODE_PRIVATE)
         }
+        TamperProtection.settingsAccess.onGranted = onSettingsAccessGranted
+        // Also restore the expiry check if the service reconnects during an access window.
+        settingsPageChecks.request(checkImmediately = true)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
-        if (keyguardManager.isKeyguardLocked) return
+        if (isScreenLocked()) {
+            settingsPageChecks.cancel()
+            return
+        }
 
         val isStateChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && !isStateChange) return
@@ -54,7 +73,7 @@ class BlockerService : AccessibilityService() {
 
         // Force-stopping the blocker also disables its accessibility service, so
         // while any block is active, gate our own pages in Settings.
-        if (pkg in SETTINGS_PACKAGES && guardOwnSettingsPages(checkImmediately = isStateChange)) return
+        if (pkg in SETTINGS_PACKAGES && settingsPageChecks.request(checkImmediately = isStateChange)) return
 
         // Window state changes are only needed for the Settings guard above.
         if (isStateChange) return
@@ -108,15 +127,9 @@ class BlockerService : AccessibilityService() {
      * toggle that turns blocking off) is open while a schedule is active.
      * Returns true when the page is being gated.
      */
-    private fun guardOwnSettingsPages(checkImmediately: Boolean): Boolean {
-        if (!TamperProtection.isEnabled) return false
-        val now = System.currentTimeMillis()
-        // Content changes in Settings are frequent, so throttle them; a window
-        // state change (the page opening) is always checked straight away.
-        if (!checkImmediately && now - lastSettingsCheckTime < SETTINGS_CHECK_THROTTLE_MS) return false
-        lastSettingsCheckTime = now
-
-        val schedule = Schedules.findActiveSchedule() ?: return false
+    private fun guardOwnSettingsPages(): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        if (Schedules.findActiveSchedule() == null) return false
         val windowId = ownSettingsPageWindowId() ?: return false
         // Older Settings can deliver queued events from the window we just
         // replaced. Redirecting again would cover the gate with Settings home.
@@ -142,15 +155,11 @@ class BlockerService : AccessibilityService() {
             Log.e(TAG, "Could not reset Settings navigation", e)
             performGlobalAction(GLOBAL_ACTION_HOME)
         }
-        Log.d(TAG, "Guarding own settings page; schedule ${schedule.name} is active")
-        launchFrictionGate(
-            schedule.id,
-            schedule.name,
-            getString(R.string.own_settings_target, getString(R.string.launcher_name)),
-            isWebsite = false,
-            wordCount = TamperProtection.wordCount,
-            isSettings = true
-        )
+        Log.d(TAG, "Guarding own settings page while schedules are active")
+        startActivity(Intent(this, UnlockActivity::class.java).apply {
+            putExtra(UnlockActivity.EXTRA_IS_SETTINGS, true)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
         return true
     }
 
@@ -206,17 +215,13 @@ class BlockerService : AccessibilityService() {
         scheduleId: String,
         scheduleName: String,
         blockedTarget: String,
-        isWebsite: Boolean,
-        wordCount: Int = 0,
-        isSettings: Boolean = false
+        isWebsite: Boolean
     ) {
         val intent = Intent(this, UnlockActivity::class.java).apply {
             putExtra(UnlockActivity.EXTRA_SCHEDULE_ID, scheduleId)
             putExtra(UnlockActivity.EXTRA_SCHEDULE_NAME, scheduleName)
             putExtra(UnlockActivity.EXTRA_BLOCKED_TARGET, blockedTarget)
             putExtra(UnlockActivity.EXTRA_IS_WEBSITE, isWebsite)
-            putExtra(UnlockActivity.EXTRA_WORD_COUNT, wordCount)
-            putExtra(UnlockActivity.EXTRA_IS_SETTINGS, isSettings)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
@@ -409,7 +414,29 @@ class BlockerService : AccessibilityService() {
         }
     }
 
-    override fun onInterrupt() {}
+    private fun isScreenLocked(): Boolean =
+        (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
+
+    private fun cancelSettingsChecks() {
+        settingsPageChecks.cancel()
+        if (TamperProtection.settingsAccess.onGranted === onSettingsAccessGranted) {
+            TamperProtection.settingsAccess.onGranted = null
+        }
+    }
+
+    override fun onInterrupt() {
+        settingsPageChecks.cancel()
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        cancelSettingsChecks()
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        cancelSettingsChecks()
+        super.onDestroy()
+    }
 
     companion object {
         private const val TAG = "BlockerService"

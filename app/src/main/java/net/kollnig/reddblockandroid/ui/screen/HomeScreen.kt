@@ -395,7 +395,17 @@ fun HomeScreen(
                     if (Schedules.findActiveSchedule() != null &&
                         TamperProtection.wouldWeaken(enabled, wordCount)
                     ) {
-                        onFrictionGateRequired(TamperProtection.wordCount) { save() }
+                        fun requestProtectionGate() {
+                            val requiredWordCount = TamperProtection.requiredWordCount()
+                            onFrictionGateRequired(requiredWordCount) {
+                                if (TamperProtection.requiredWordCount() > requiredWordCount) {
+                                    requestProtectionGate()
+                                } else {
+                                    save()
+                                }
+                            }
+                        }
+                        requestProtectionGate()
                     } else {
                         save()
                     }
