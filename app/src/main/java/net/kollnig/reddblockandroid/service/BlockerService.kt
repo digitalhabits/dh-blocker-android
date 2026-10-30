@@ -10,6 +10,7 @@ import net.kollnig.reddblockandroid.UnlockActivity
 import net.kollnig.reddblockandroid.schedule.Schedules
 
 import net.kollnig.reddblockandroid.util.TamperProtection
+import net.kollnig.reddblockandroid.util.containsAccessibilityText
 import net.kollnig.reddblockandroid.util.isPrefsInitialized
 import net.kollnig.reddblockandroid.util.prefs
 import androidx.core.net.toUri
@@ -134,28 +135,19 @@ class BlockerService : AccessibilityService() {
         try {
             if (root.packageName?.toString() !in SETTINGS_PACKAGES) return false
             val ownLabel = applicationInfo.loadLabel(packageManager).toString()
-            if (!containsText(root, ownLabel)) return false
+            if (!root.containsAccessibilityText(ownLabel)) return false
             // App info page
-            if (containsText(root, forceStopLabel())) return true
+            if (root.containsAccessibilityText(forceStopLabel())) return true
             // Accessibility page: Settings shows our service description there,
             // and on most versions a "Use <app>" toggle.
-            if (containsText(root, getString(R.string.accessibility_service_summary))) return true
-            return accessibilityToggleLabels(ownLabel).any { containsText(root, it) }
+            if (root.containsAccessibilityText(getString(R.string.accessibility_service_summary))) return true
+            return accessibilityToggleLabels(ownLabel).any { root.containsAccessibilityText(it) }
         } catch (e: Exception) {
             Log.e(TAG, "Error inspecting Settings window", e)
             return false
         } finally {
             root.recycle()
         }
-    }
-
-    private fun containsText(
-        root: android.view.accessibility.AccessibilityNodeInfo,
-        text: String
-    ): Boolean {
-        val nodes = root.findAccessibilityNodeInfosByText(text)
-        nodes.forEach { it.recycle() }
-        return nodes.isNotEmpty()
     }
 
     /** Labels of the "Use <app>" toggle on our accessibility settings page,
