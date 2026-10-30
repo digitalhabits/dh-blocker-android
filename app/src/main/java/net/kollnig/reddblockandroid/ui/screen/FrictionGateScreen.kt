@@ -70,6 +70,7 @@ fun FrictionGateScreen(
     scheduleName: String? = null,
     blockedTargetLabel: String? = null,
     isBlockMode: Boolean = false,
+    isSettingsAccessMode: Boolean = false,
 ) {
     val useChineseMode = remember {
         BuildConfig.DEBUG && prefs.getBoolean("debug_chinese_mode_enabled", true)
@@ -157,7 +158,9 @@ fun FrictionGateScreen(
     }
 
     // Build contextual title for block mode
-    val topBarTitle = if (isBlockMode && blockedTargetLabel != null) {
+    val topBarTitle = if (isSettingsAccessMode) {
+        stringResource(R.string.settings_access_title)
+    } else if (isBlockMode && blockedTargetLabel != null) {
         if (unlockDurationText != null)
             stringResource(R.string.block_gate_title_duration, blockedTargetLabel, unlockDurationText)
         else
@@ -220,7 +223,14 @@ fun FrictionGateScreen(
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
-                if (isBlockMode && scheduleName != null) {
+                if (isSettingsAccessMode) {
+                    Text(
+                        stringResource(R.string.settings_access_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                } else if (isBlockMode && scheduleName != null) {
                     Text(
                         stringResource(R.string.block_gate_schedule, scheduleName),
                         style = MaterialTheme.typography.bodyMedium,
@@ -369,7 +379,8 @@ fun FrictionGateScreen(
                     )
                 ) {
                     Text(
-                        stringResource(if (isBlockMode) R.string.keep_blocked else R.string.cancel),
+                        stringResource(if (isBlockMode && !isSettingsAccessMode)
+                            R.string.keep_blocked else R.string.cancel),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -386,7 +397,9 @@ fun FrictionGateScreen(
                 ) {
                     Text(
                         if (currentWordIndex >= totalCount - 1) {
-                            if (isBlockMode && unlockDurationText != null)
+                            if (isSettingsAccessMode)
+                                stringResource(R.string.settings_access_allow)
+                            else if (isBlockMode && unlockDurationText != null)
                                 stringResource(R.string.friction_gate_unlock_duration, unlockDurationText)
                             else stringResource(R.string.override_button)
                         }

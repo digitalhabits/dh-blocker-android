@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.EventBusy
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
@@ -80,6 +81,7 @@ import net.kollnig.reddblockandroid.schedule.Schedules
 import net.kollnig.reddblockandroid.ui.theme.BadgeGreen
 import net.kollnig.reddblockandroid.ui.theme.FocusSpaceAccentPalette
 import net.kollnig.reddblockandroid.ui.theme.SoftRed
+import net.kollnig.reddblockandroid.util.TamperProtection
 import net.kollnig.reddblockandroid.util.isAccessibilityServiceEnabled
 import net.kollnig.reddblockandroid.util.prefs
 
@@ -88,16 +90,18 @@ import net.kollnig.reddblockandroid.util.prefs
 fun HomeScreen(
     onCreateSchedule: () -> Unit,
     onEditSchedule: (Schedule) -> Unit,
-    onFrictionGateRequired: (Schedule, () -> Unit) -> Unit
+    onFrictionGateRequired: (wordCount: Int, onPassed: () -> Unit) -> Unit
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val footerUrl = stringResource(R.string.footer_url)
     var isAccessibilityEnabled by remember { mutableStateOf(context.isAccessibilityServiceEnabled()) }
     var schedules by remember { mutableStateOf(Schedules.getAll()) }
     var refreshTick by remember { mutableIntStateOf(0) }
     var isMenuExpanded by remember { mutableStateOf(false) }
     var chineseModeEnabled by remember { mutableStateOf(prefs.getBoolean("debug_chinese_mode_enabled", true)) }
     var showAccessibilityDialog by remember { mutableStateOf(false) }
+    var showTamperProtectionDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -209,6 +213,14 @@ fun HomeScreen(
                                     }
                                 )
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.tamper_protection)) },
+                                onClick = {
+                                    isMenuExpanded = false
+                                    showTamperProtectionDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) }
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.export_rules)) },
                                 onClick = {
@@ -342,7 +354,7 @@ fun HomeScreen(
                         onClick = { onEditSchedule(schedule) },
                         onToggle = {
                             if (isActive) {
-                                onFrictionGateRequired(schedule) {
+                                onFrictionGateRequired(schedule.frictionWordCount) {
                                     Schedules.toggle(schedule.id, context)
                                     refreshSchedules()
                                 }
@@ -359,11 +371,45 @@ fun HomeScreen(
                 stringResource(R.string.footer_text),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { uriHandler.openUri(context.getString(R.string.footer_url)) }
+                    .clickable { uriHandler.openUri(footerUrl) }
                     .padding(top = 18.dp, bottom = 16.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        if (showTamperProtectionDialog) {
+            TamperProtectionDialog(
+                initialEnabled = TamperProtection.isEnabled,
+                initialWordCount = TamperProtection.wordCount,
+                onDismiss = { showTamperProtectionDialog = false },
+                onSave = { enabled, wordCount ->
+                    showTamperProtectionDialog = false
+                    val save = {
+                        TamperProtection.isEnabled = enabled
+                        TamperProtection.wordCount = wordCount
+                    }
+                    // Weakening protection mid-block must cost as much as the
+                    // gate it would let the user skip.
+                    if (Schedules.findActiveSchedule() != null &&
+                        TamperProtection.wouldWeaken(enabled, wordCount)
+                    ) {
+                        fun requestProtectionGate() {
+                            val requiredWordCount = TamperProtection.requiredWordCount()
+                            onFrictionGateRequired(requiredWordCount) {
+                                if (TamperProtection.requiredWordCount() > requiredWordCount) {
+                                    requestProtectionGate()
+                                } else {
+                                    save()
+                                }
+                            }
+                        }
+                        requestProtectionGate()
+                    } else {
+                        save()
+                    }
+                }
             )
         }
 

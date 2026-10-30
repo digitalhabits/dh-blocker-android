@@ -10,7 +10,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import net.kollnig.reddblockandroid.data.Schedule
 import net.kollnig.reddblockandroid.ui.screen.CreateScheduleScreen
 import net.kollnig.reddblockandroid.ui.screen.FrictionGateScreen
 import net.kollnig.reddblockandroid.ui.screen.HomeScreen
@@ -43,8 +42,8 @@ fun AppNavigation() {
                 onEditSchedule = { schedule ->
                     navController.navigate("edit_schedule/${schedule.id}")
                 },
-                onFrictionGateRequired = { schedule: Schedule, onPassed: () -> Unit ->
-                    frictionWordCount = schedule.frictionWordCount
+                onFrictionGateRequired = { wordCount, onPassed ->
+                    frictionWordCount = wordCount
                     pendingFrictionAction = onPassed
                     navController.navigate("friction_gate")
                 }
@@ -80,19 +79,23 @@ fun AppNavigation() {
             )
         }
 
-        composable("friction_gate") {
-            FrictionGateScreen(
-                wordCount = frictionWordCount,
-                onPassed = {
-                    navController.popBackStack()
-                    pendingFrictionAction?.invoke()
-                    pendingFrictionAction = null
-                },
-                onBackPressed = {
-                    pendingFrictionAction = null
-                    navController.popBackStack()
-                }
-            )
+        composable("friction_gate") { backStackEntry ->
+            // A stricter follow-up gate must start with fresh word progress.
+            key(backStackEntry.id) {
+                FrictionGateScreen(
+                    wordCount = frictionWordCount,
+                    onPassed = {
+                        val completedAction = pendingFrictionAction
+                        pendingFrictionAction = null
+                        navController.popBackStack()
+                        completedAction?.invoke()
+                    },
+                    onBackPressed = {
+                        pendingFrictionAction = null
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
 
     }

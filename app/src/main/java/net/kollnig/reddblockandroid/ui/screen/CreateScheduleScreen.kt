@@ -77,6 +77,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -97,7 +98,6 @@ import net.kollnig.reddblockandroid.util.normaliseDomain
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.TextStyle
-import java.util.Locale
 import java.util.UUID
 
 private enum class EditorSection {
@@ -115,6 +115,7 @@ fun CreateScheduleScreen(
     onFrictionGateRequired: (wordCount: Int, onPassed: () -> Unit) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
     val existingSchedule = scheduleId?.let { Schedules.get(it) }
 
     var scheduleName by remember { mutableStateOf(existingSchedule?.name ?: "") }
@@ -246,7 +247,7 @@ fun CreateScheduleScreen(
     }
     val daysSummary = selectedDays
         .sortedBy { it.value }
-        .joinToString(", ") { it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
+        .joinToString(", ") { it.getDisplayName(TextStyle.SHORT, locale) }
     val whenSummary = when (scheduleType) {
         ScheduleTiming.ScheduleType.MANUAL -> stringResource(R.string.when_to_block_summary_manual)
         ScheduleTiming.ScheduleType.DAILY -> stringResource(
@@ -551,7 +552,7 @@ fun CreateScheduleScreen(
                             ) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text(
-                                        day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                                        day.getDisplayName(TextStyle.NARROW, locale),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
