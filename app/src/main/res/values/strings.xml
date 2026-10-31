@@ -126,8 +126,6 @@
     <string name="block_gate_schedule">Blocked by your \"%1$s\" schedule.</string>
     <string name="friction_gate_input_label">Type the word above</string>
     <string name="friction_gate_error">That doesn\'t match. Try again.</string>
-    <string name="friction_gate_pinyin_hint">Type the pinyin\u2026</string>
-    <string name="friction_gate_reveal_pinyin">Reveal pinyin</string>
     <string name="friction_gate_next">Next word</string>
     <string name="friction_gate_unlock_duration">Unlock for %1$s</string>
     <string name="friction_gate_type_each_word">Type each word to continue.</string>
@@ -137,7 +135,20 @@
         <item quantity="other">%d words remaining</item>
     </plurals>
     <string name="friction_gate_finish">Finish</string>
-    <string name="friction_gate_weekly_stats">This week: %1$d words \u00b7 ~%2$d min typing</string>
+    <string name="friction_gate_weekly_stats">This week: %1$d words \u00b7 ~%2$d min practising</string>
+    <plurals name="friction_gate_questions_remaining">
+        <item quantity="one">%d question remaining</item>
+        <item quantity="other">%d questions remaining</item>
+    </plurals>
+    <string name="friction_gate_quiz_pick_meaning">Pick the English meaning.</string>
+    <string name="friction_gate_quiz_pick_characters">Pick the Chinese characters.</string>
+    <string name="friction_gate_quiz_pick_tones">Pick the correct tones.</string>
+    <string name="friction_gate_quiz_wrong">Not quite. %1$s (%2$s) means \u201c%3$s\u201d.</string>
+    <string name="friction_gate_quiz_wrong_tone">Not quite. %1$s isn\'t pronounced %2$s.</string>
+    <plurals name="friction_gate_quiz_retry_in">
+        <item quantity="one">Try again in %d second</item>
+        <item quantity="other">Try again in %d seconds</item>
+    </plurals>
 
     <!-- Permissions Screen -->
     <string name="permissions_info">These permissions are needed for Digital Habits: Blocker to function properly.</string>
