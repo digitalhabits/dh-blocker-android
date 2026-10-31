@@ -33,7 +33,7 @@ import net.kollnig.reddblockandroid.data.CHINESE_VOCABULARY
 import net.kollnig.reddblockandroid.data.ChineseWord
 import net.kollnig.reddblockandroid.util.ChineseQuiz
 import net.kollnig.reddblockandroid.util.ChineseTypingStats
-import net.kollnig.reddblockandroid.util.QuizDirection
+import net.kollnig.reddblockandroid.util.QuestionType
 import net.kollnig.reddblockandroid.util.prefs
 
 // Common English words for the friction gate
@@ -407,7 +407,7 @@ private fun ColumnScope.ChineseQuizBody(
         }
         // Re-ask the same word with fresh distractors in a new order.
         val q = questions[currentIndex]
-        questions[currentIndex] = ChineseQuiz.question(q.word, q.direction, pool)
+        questions[currentIndex] = ChineseQuiz.question(q.word, q.type, pool)
         wrongPick = null
         lockoutEndsAt = null
     }
@@ -439,7 +439,7 @@ private fun ColumnScope.ChineseQuizBody(
         }
     }
 
-    val isChineseToEnglish = question.direction == QuizDirection.CHINESE_TO_ENGLISH
+    val type = question.type
 
     Column(
         modifier = Modifier
@@ -457,8 +457,11 @@ private fun ColumnScope.ChineseQuizBody(
             ),
             contextText = contextText,
             instruction = stringResource(
-                if (isChineseToEnglish) R.string.friction_gate_quiz_pick_meaning
-                else R.string.friction_gate_quiz_pick_characters
+                when (type) {
+                    QuestionType.CHINESE_TO_ENGLISH -> R.string.friction_gate_quiz_pick_meaning
+                    QuestionType.ENGLISH_TO_CHINESE -> R.string.friction_gate_quiz_pick_characters
+                    QuestionType.TONE -> R.string.friction_gate_quiz_pick_tones
+                }
             ),
         )
 
@@ -468,17 +471,31 @@ private fun ColumnScope.ChineseQuizBody(
             shape = RoundedCornerShape(10.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
         ) {
-            Text(
-                if (isChineseToEnglish) question.word.character else question.word.meaning,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 24.dp),
-                style = if (isChineseToEnglish) MaterialTheme.typography.displayMedium
-                else MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.primary
-            )
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    if (type == QuestionType.ENGLISH_TO_CHINESE) question.word.meaning else question.word.character,
+                    style = if (type == QuestionType.ENGLISH_TO_CHINESE) MaterialTheme.typography.headlineSmall
+                    else MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                // The meaning says which reading is meant; it gives nothing away about tones.
+                if (type == QuestionType.TONE) {
+                    Text(
+                        question.word.meaning,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         // Options
@@ -499,8 +516,12 @@ private fun ColumnScope.ChineseQuizBody(
                 )
             ) {
                 Text(
-                    if (isChineseToEnglish) option.meaning else option.character,
-                    style = if (isChineseToEnglish) MaterialTheme.typography.bodyLarge
+                    when (type) {
+                        QuestionType.CHINESE_TO_ENGLISH -> option.meaning
+                        QuestionType.ENGLISH_TO_CHINESE -> option.character
+                        QuestionType.TONE -> option.pinyin
+                    },
+                    style = if (type == QuestionType.CHINESE_TO_ENGLISH) MaterialTheme.typography.bodyLarge
                     else MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
@@ -511,7 +532,10 @@ private fun ColumnScope.ChineseQuizBody(
         val picked = wrongPick
         if (picked != null) {
             Text(
-                stringResource(R.string.friction_gate_quiz_wrong, picked.character, picked.pinyin, picked.meaning),
+                if (type == QuestionType.TONE)
+                    stringResource(R.string.friction_gate_quiz_wrong_tone, picked.character, picked.pinyin)
+                else
+                    stringResource(R.string.friction_gate_quiz_wrong, picked.character, picked.pinyin, picked.meaning),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center
