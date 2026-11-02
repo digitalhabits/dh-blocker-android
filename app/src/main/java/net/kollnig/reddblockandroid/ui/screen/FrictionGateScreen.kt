@@ -356,8 +356,7 @@ private fun ColumnScope.TypingBody(
 }
 
 /**
- * Chinese mode: four-option multiple choice, alternating Chinese → English and
- * English → Chinese. A wrong pick locks the quiz for
+ * Chinese mode: four-option multiple choice using pinyin, meanings and tones. A wrong pick locks the quiz for
  * [ChineseQuiz.WRONG_ANSWER_LOCKOUT_MS] and then re-asks the same word with
  * fresh options, so guessing is slower than thinking.
  */
@@ -458,8 +457,8 @@ private fun ColumnScope.ChineseQuizBody(
             contextText = contextText,
             instruction = stringResource(
                 when (type) {
-                    QuestionType.CHINESE_TO_ENGLISH -> R.string.friction_gate_quiz_pick_meaning
-                    QuestionType.ENGLISH_TO_CHINESE -> R.string.friction_gate_quiz_pick_characters
+                    QuestionType.PINYIN_TO_ENGLISH -> R.string.friction_gate_quiz_pick_meaning
+                    QuestionType.ENGLISH_TO_PINYIN -> R.string.friction_gate_quiz_pick_pinyin
                     QuestionType.TONE -> R.string.friction_gate_quiz_pick_tones
                 }
             ),
@@ -479,22 +478,12 @@ private fun ColumnScope.ChineseQuizBody(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    if (type == QuestionType.ENGLISH_TO_CHINESE) question.word.meaning else question.word.character,
-                    style = if (type == QuestionType.ENGLISH_TO_CHINESE) MaterialTheme.typography.headlineSmall
-                    else MaterialTheme.typography.displayMedium,
+                    if (type == QuestionType.PINYIN_TO_ENGLISH) question.word.pinyin else question.word.meaning,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.primary
                 )
-                // The meaning says which reading is meant; it gives nothing away about tones.
-                if (type == QuestionType.TONE) {
-                    Text(
-                        question.word.meaning,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         }
 
@@ -517,11 +506,11 @@ private fun ColumnScope.ChineseQuizBody(
             ) {
                 Text(
                     when (type) {
-                        QuestionType.CHINESE_TO_ENGLISH -> option.meaning
-                        QuestionType.ENGLISH_TO_CHINESE -> option.character
+                        QuestionType.PINYIN_TO_ENGLISH -> option.meaning
+                        QuestionType.ENGLISH_TO_PINYIN -> option.pinyin
                         QuestionType.TONE -> option.pinyin
                     },
-                    style = if (type == QuestionType.CHINESE_TO_ENGLISH) MaterialTheme.typography.bodyLarge
+                    style = if (type == QuestionType.PINYIN_TO_ENGLISH) MaterialTheme.typography.bodyLarge
                     else MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
@@ -533,9 +522,9 @@ private fun ColumnScope.ChineseQuizBody(
         if (picked != null) {
             Text(
                 if (type == QuestionType.TONE)
-                    stringResource(R.string.friction_gate_quiz_wrong_tone, picked.character, picked.pinyin)
+                    stringResource(R.string.friction_gate_quiz_wrong_tone, picked.meaning, picked.pinyin)
                 else
-                    stringResource(R.string.friction_gate_quiz_wrong, picked.character, picked.pinyin, picked.meaning),
+                    stringResource(R.string.friction_gate_quiz_wrong, picked.pinyin, picked.meaning),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center

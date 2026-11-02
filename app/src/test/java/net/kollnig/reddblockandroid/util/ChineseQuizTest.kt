@@ -21,12 +21,12 @@ class ChineseQuizTest {
         repeat(20) { seed ->
             ChineseQuiz.build(pool, wordCount = 6, random = Random(seed)).forEachIndexed { i, q ->
                 when (i % 3) {
-                    0 -> assertEquals(QuestionType.CHINESE_TO_ENGLISH, q.type)
-                    1 -> assertEquals(QuestionType.ENGLISH_TO_CHINESE, q.type)
+                    0 -> assertEquals(QuestionType.PINYIN_TO_ENGLISH, q.type)
+                    1 -> assertEquals(QuestionType.ENGLISH_TO_PINYIN, q.type)
                     // Neutral-tone-only words fall back to a meaning question.
                     else -> assertTrue(
                         q.type == QuestionType.TONE ||
-                            (q.type == QuestionType.CHINESE_TO_ENGLISH && ChineseQuiz.toneVariants(q.word.pinyin).isEmpty())
+                            (q.type == QuestionType.PINYIN_TO_ENGLISH && ChineseQuiz.toneVariants(q.word.pinyin).isEmpty())
                     )
                 }
             }
@@ -45,8 +45,22 @@ class ChineseQuizTest {
                     assertEquals(q.options.size, q.options.map { it.pinyin }.toSet().size)
                 } else {
                     assertEquals(q.options.size, q.options.map { it.character }.toSet().size)
+                    assertEquals(q.options.size, q.options.map { it.pinyin.lowercase() }.toSet().size)
                     assertEquals(q.options.size, q.options.map { it.meaning.lowercase() }.toSet().size)
                 }
+            }
+        }
+    }
+
+    @Test
+    fun homophonesAreNeverOfferedAsWrongAnswers() {
+        val he = pool.first { it.character == "他" }
+        val she = pool.first { it.character == "她" }
+        repeat(20) { seed ->
+            listOf(QuestionType.PINYIN_TO_ENGLISH, QuestionType.ENGLISH_TO_PINYIN).forEach { type ->
+                val question = ChineseQuiz.question(he, type, pool, Random(seed))
+                assertTrue(she !in question.options)
+                assertEquals(1, question.options.count { it.pinyin.equals(he.pinyin, ignoreCase = true) })
             }
         }
     }

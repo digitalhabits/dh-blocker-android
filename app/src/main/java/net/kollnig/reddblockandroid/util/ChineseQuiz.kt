@@ -4,13 +4,13 @@ import net.kollnig.reddblockandroid.data.ChineseWord
 import kotlin.random.Random
 
 enum class QuestionType {
-    /** Show the characters, pick the English meaning. */
-    CHINESE_TO_ENGLISH,
+    /** Show pinyin, pick the English meaning. */
+    PINYIN_TO_ENGLISH,
 
-    /** Show the English meaning, pick the characters. */
-    ENGLISH_TO_CHINESE,
+    /** Show the English meaning, pick the pinyin. */
+    ENGLISH_TO_PINYIN,
 
-    /** Show the characters and meaning, pick the pinyin with the right tones. */
+    /** Show the English meaning, pick the pinyin with the right tones. */
     TONE,
 }
 
@@ -36,8 +36,8 @@ object ChineseQuiz {
     const val WRONG_ANSWER_LOCKOUT_MS = 10_000L
 
     private val TYPE_CYCLE = listOf(
-        QuestionType.CHINESE_TO_ENGLISH,
-        QuestionType.ENGLISH_TO_CHINESE,
+        QuestionType.PINYIN_TO_ENGLISH,
+        QuestionType.ENGLISH_TO_PINYIN,
         QuestionType.TONE,
     )
 
@@ -51,7 +51,7 @@ object ChineseQuiz {
         return pool.shuffled(random).take(questionCount).mapIndexed { i, word ->
             var type = TYPE_CYCLE[i % TYPE_CYCLE.size]
             if (type == QuestionType.TONE && toneVariants(word.pinyin).size < OPTION_COUNT - 1) {
-                type = QuestionType.CHINESE_TO_ENGLISH
+                type = QuestionType.PINYIN_TO_ENGLISH
             }
             question(word, type, pool, random)
         }
@@ -73,18 +73,21 @@ object ChineseQuiz {
     }
 
     /**
-     * Distractors never share the target's characters or meaning, nor each
+     * Distractors never share the target's characters, pinyin or meaning, nor each
      * other's, so exactly one option is right.
      */
     private fun meaningDistractors(word: ChineseWord, pool: List<ChineseWord>, random: Random): List<ChineseWord> {
         val distractors = mutableListOf<ChineseWord>()
         val usedCharacters = mutableSetOf(word.character)
+        val usedPinyin = mutableSetOf(word.pinyin.lowercase())
         val usedMeanings = mutableSetOf(word.meaning.lowercase())
         for (candidate in pool.shuffled(random)) {
             if (distractors.size == OPTION_COUNT - 1) break
-            if (candidate.character in usedCharacters || candidate.meaning.lowercase() in usedMeanings) continue
+            if (candidate.character in usedCharacters || candidate.pinyin.lowercase() in usedPinyin ||
+                candidate.meaning.lowercase() in usedMeanings) continue
             distractors += candidate
             usedCharacters += candidate.character
+            usedPinyin += candidate.pinyin.lowercase()
             usedMeanings += candidate.meaning.lowercase()
         }
         return distractors
