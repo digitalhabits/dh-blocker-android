@@ -65,10 +65,7 @@ class UnlockActivity : ComponentActivity() {
                                 recreate()
                             } else {
                                 TamperProtection.settingsAccess.grant(requiredWordCount)
-                                startActivity(Intent(Settings.ACTION_SETTINGS).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                })
-                                finish()
+                                openSettingsHomeAndFinish()
                             }
                         } else {
                             Schedules.temporaryUnlock(this@UnlockActivity, requireNotNull(schedule).id)
@@ -76,9 +73,10 @@ class UnlockActivity : ComponentActivity() {
                         }
                     },
                     onBackPressed = {
-                        if (isWebsite || isSettings) {
-                            // The browser is already on the focus page, and
-                            // Settings has been reset to its home screen.
+                        if (isSettings) {
+                            openSettingsHomeAndFinish()
+                        } else if (isWebsite) {
+                            // The browser is already on the focus page.
                             finish()
                         } else {
                             // For blocked apps, returning to them would immediately
@@ -99,6 +97,15 @@ class UnlockActivity : ComponentActivity() {
         // instead of creating a new activity; re-render with the new extras.
         setIntent(intent)
         recreate()
+    }
+
+    /** Leaves to Settings home. The service's reset also starts a harmless
+     *  page in another Settings task, which can end up in front of home. */
+    private fun openSettingsHomeAndFinish() {
+        startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        })
+        finish()
     }
 
     /** Leaves to the home screen and finishes the gate so it doesn't linger

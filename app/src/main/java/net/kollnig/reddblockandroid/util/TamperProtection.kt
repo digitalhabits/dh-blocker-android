@@ -6,8 +6,8 @@ import net.kollnig.reddblockandroid.schedule.Schedules
 
 /**
  * Protection against escaping a block via Settings, enabled by default: while a schedule
- * is active, the blocker's App info page (Force stop, Uninstall) and its
- * accessibility toggle require at least [wordCount] words and the highest
+ * is active, the blocker's App info page (Force stop, Uninstall), the
+ * Accessibility overview and the blocker's accessibility toggle require at least [wordCount] words and the highest
  * word count of all active schedules. Passing allows Settings access for one minute;
  * it does not pause any schedule.
  */

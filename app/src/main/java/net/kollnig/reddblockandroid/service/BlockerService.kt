@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.UnlockActivity
 import net.kollnig.reddblockandroid.schedule.Schedules
@@ -32,7 +33,8 @@ class BlockerService : AccessibilityService() {
 
     private var lastSettingsGateTime: Long = 0
     private var lastSettingsGateWindowId: Int? = null
-    private var cachedForceStopLabel: Pair<java.util.Locale, String>? = null
+    private var settingsStringsLocale: java.util.Locale? = null
+    private val settingsStrings = mutableMapOf<String, String?>()
     private val settingsHandler = Handler(Looper.getMainLooper())
     private val settingsPageChecks = SettingsPageChecks(
         nowMillis = SystemClock::elapsedRealtime,
@@ -123,8 +125,9 @@ class BlockerService : AccessibilityService() {
 
     /**
      * With tamper protection on, shows the friction gate if our own App info
-     * page (Force stop, Uninstall) or our accessibility settings page (the
-     * toggle that turns blocking off) is open while a schedule is active.
+     * page (Force stop, Uninstall), the Accessibility overview or our
+     * accessibility settings page (the toggle that turns blocking off) is open
+     * while a schedule is active.
      * Returns true when the page is being gated.
      */
     private fun guardOwnSettingsPages(): Boolean {
@@ -143,9 +146,10 @@ class BlockerService : AccessibilityService() {
         // not retain the protected page beneath the friction gate.
         try {
             // Recent Pixels give Settings home its own task affinity. Reset the
-            // normal Settings task to the harmless accessibility overview too,
-            // otherwise App info / service details remain available in Recents.
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            // normal Settings task to a harmless page too, otherwise protected
+            // pages remain available in Recents. Not the Accessibility
+            // overview: it is protected itself.
+            startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             })
             startActivity(Intent(Settings.ACTION_SETTINGS).apply {
@@ -164,10 +168,28 @@ class BlockerService : AccessibilityService() {
     }
 
     private fun ownSettingsPageWindowId(): Int? {
-        val root = rootInActiveWindow ?: return null
+        // A Settings dialog such as "Turn off <app>?" becomes the active window
+        // while our page stays beneath it, so inspect every window on screen.
+        val roots = try {
+            windows.mapNotNull { it.root }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not list windows", e)
+            emptyList()
+        }.ifEmpty { listOfNotNull(rootInActiveWindow) }
+        try {
+            val ownLabel = applicationInfo.loadLabel(packageManager).toString()
+            return roots.firstNotNullOfOrNull { ownSettingsPageWindowId(it, ownLabel) }
+        } finally {
+            roots.forEach { it.recycle() }
+        }
+    }
+
+    private fun ownSettingsPageWindowId(root: AccessibilityNodeInfo, ownLabel: String): Int? {
         try {
             if (root.packageName?.toString() !in SETTINGS_PACKAGES) return null
-            val ownLabel = applicationInfo.loadLabel(packageManager).toString()
+            // Accessibility overview: it leads to our toggle and every other
+            // service. Settings home links to it but shows none of its categories.
+            if (accessibilityCategoryTitles().any { root.containsAccessibilityText(it) }) return root.windowId
             if (!root.containsAccessibilityText(ownLabel)) return null
             // App info page
             if (root.containsAccessibilityText(forceStopLabel())) return root.windowId
@@ -180,8 +202,6 @@ class BlockerService : AccessibilityService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error inspecting Settings window", e)
             return null
-        } finally {
-            root.recycle()
         }
     }
 
@@ -191,25 +211,35 @@ class BlockerService : AccessibilityService() {
         listOf("accessibility_service_primary_switch_title", "accessibility_service_master_switch_title")
             .mapNotNull { name -> settingsString(name)?.let { runCatching { it.format(ownLabel) }.getOrNull() } }
 
-    private fun settingsString(name: String): String? = try {
-        val res = packageManager.getResourcesForApplication(SETTINGS_PACKAGE)
-        val id = res.getIdentifier(name, "string", SETTINGS_PACKAGE)
-        if (id != 0) res.getString(id) else null
-    } catch (_: Exception) {
-        null
+    /** Category headings found only on the Accessibility overview. */
+    private fun accessibilityCategoryTitles(): List<String> =
+        listOf(
+            "user_installed_services_category_title", // Downloaded apps
+            "screen_reader_category_title", // Screen readers
+            "interaction_control_category_title", // Interaction controls
+        ).mapNotNull(::settingsString)
+
+    /** A string from the Settings app's own resources in the device's language,
+     *  so the guard works in every locale. Lookups run on every check, so cache them. */
+    private fun settingsString(name: String): String? {
+        val locale = resources.configuration.locales[0]
+        if (settingsStringsLocale != locale) {
+            settingsStrings.clear()
+            settingsStringsLocale = locale
+        }
+        if (name in settingsStrings) return settingsStrings[name]
+        val value = try {
+            val res = packageManager.getResourcesForApplication(SETTINGS_PACKAGE)
+            val id = res.getIdentifier(name, "string", SETTINGS_PACKAGE)
+            if (id != 0) res.getString(id) else null
+        } catch (_: Exception) {
+            return null // Retry next time rather than caching a failed lookup.
+        }
+        settingsStrings[name] = value
+        return value
     }
 
-    /** The "Force stop" button label in the device's language, read from the
-     *  Settings app's own resources so the guard works in every locale. */
-    private fun forceStopLabel(): String {
-        val locale = resources.configuration.locales[0]
-        cachedForceStopLabel?.let { (cachedLocale, label) ->
-            if (cachedLocale == locale) return label
-        }
-        val label = settingsString("force_stop") ?: "Force stop"
-        cachedForceStopLabel = locale to label
-        return label
-    }
+    private fun forceStopLabel(): String = settingsString("force_stop") ?: "Force stop"
 
     private fun launchFrictionGate(
         scheduleId: String,

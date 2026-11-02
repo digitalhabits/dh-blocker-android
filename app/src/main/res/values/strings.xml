@@ -40,7 +40,7 @@
     <string name="disable_chinese_mode">Disable Chinese mode</string>
     <string name="enable_chinese_mode">Enable Chinese mode</string>
     <string name="tamper_protection">Tamper protection</string>
-    <string name="tamper_protection_desc">While a schedule is blocking, type words before opening this app\'s App info page (Force stop, Uninstall) or accessibility settings. Access lasts 1 minute and does not pause app or website blocks. The word count is at least as high as every active schedule.</string>
+    <string name="tamper_protection_desc">While a schedule is blocking, type words before opening this app\'s App info page (Force stop, Uninstall) or Accessibility settings. Access lasts 1 minute and does not pause app or website blocks. The word count is at least as high as every active schedule.</string>
     <string name="tamper_protection_enable">Protect while blocking</string>
     <string name="tamper_protection_word_count">Minimum words for Settings access</string>
 

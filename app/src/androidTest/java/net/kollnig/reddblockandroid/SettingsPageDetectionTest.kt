@@ -49,6 +49,78 @@ class SettingsPageDetectionTest {
         }
     }
 
+    @Test
+    fun onlyAccessibilityOverviewExposesItsCategoryTitles() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val resources = context.packageManager.getResourcesForApplication("com.android.settings")
+        // Keep in sync with BlockerService.accessibilityCategoryTitles().
+        val titles = listOf(
+            "user_installed_services_category_title",
+            "screen_reader_category_title",
+            "interaction_control_category_title",
+        ).mapNotNull { name ->
+            resources.getIdentifier(name, "string", "com.android.settings")
+                .takeIf { it != 0 }?.let(resources::getString)
+        }
+        assertTrue("Settings has none of the category strings", titles.isNotEmpty())
+        val homeTitles = listOf("network_dashboard_title", "connected_devices_dashboard_title")
+            .mapNotNull { name ->
+                resources.getIdentifier(name, "string", "com.android.settings")
+                    .takeIf { it != 0 }?.let(resources::getString)
+            }
+        assertTrue("Settings has none of the home category strings", homeTitles.isNotEmpty())
+
+        try {
+            openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            assertTrue("Accessibility overview shows no category title",
+                awaitSettingsRoot { root -> titles.any { root.containsAccessibilityText(it) } })
+
+            // Settings home links to Accessibility and must stay reachable.
+            openSettings(Settings.ACTION_SETTINGS)
+            // waitForIdle can return before navigation starts. Require a home
+            // marker, then inspect that same root rather than the old page.
+            assertTrue("Settings home did not become visible",
+                awaitSettingsRoot { root ->
+                    if (homeTitles.none { root.containsAccessibilityText(it) }) {
+                        false
+                    } else {
+                        assertFalse("Settings home shows an Accessibility category title",
+                            titles.any { root.containsAccessibilityText(it) })
+                        true
+                    }
+                })
+        } finally {
+            context.startActivity(Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+
+    private fun openSettings(action: String) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.targetContext.startActivity(Intent(action).addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        instrumentation.uiAutomation.waitForIdle(500, 5_000)
+    }
+
+    /** True once a Settings window satisfies [predicate] within 5 seconds. */
+    private fun awaitSettingsRoot(predicate: (AccessibilityNodeInfo) -> Boolean): Boolean {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        while (SystemClock.uptimeMillis() < deadline) {
+            val root = automation.rootInActiveWindow
+            if (root != null) {
+                try {
+                    if (root.packageName?.toString() == "com.android.settings" && predicate(root)) return true
+                } finally {
+                    root.recycle()
+                }
+            }
+            SystemClock.sleep(100)
+        }
+        return false
+    }
+
     private fun awaitAppInfo(label: String, forceStop: String): AccessibilityNodeInfo {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val deadline = SystemClock.uptimeMillis() + 5_000
