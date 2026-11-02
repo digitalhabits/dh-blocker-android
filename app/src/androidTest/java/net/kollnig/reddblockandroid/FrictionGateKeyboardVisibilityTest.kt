@@ -1,5 +1,7 @@
 package net.kollnig.reddblockandroid
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.view.WindowInsets
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -20,7 +22,10 @@ import android.graphics.Bitmap
 import java.io.File
 import net.kollnig.reddblockandroid.ui.screen.FrictionGateScreen
 import net.kollnig.reddblockandroid.ui.theme.ReDDBlockAndroidTheme
+import net.kollnig.reddblockandroid.util.prefs
+import org.junit.After
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +35,23 @@ import org.junit.runner.RunWith
 class FrictionGateKeyboardVisibilityTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    private lateinit var originalPrefs: SharedPreferences
+    private val testPrefsName = "friction-keyboard-test"
+
+    // Chinese mode is a multiple-choice quiz with no text field; test the typing gate.
+    @Before
+    fun useEnglishTypingGate() {
+        originalPrefs = prefs
+        prefs = composeRule.activity.getSharedPreferences(testPrefsName, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("debug_chinese_mode_enabled", false).commit()
+    }
+
+    @After
+    fun restorePreferences() {
+        prefs = originalPrefs
+        composeRule.activity.deleteSharedPreferences(testPrefsName)
+    }
 
     @Test
     fun focusedInputRemainsAboveIme() {
