@@ -54,6 +54,7 @@ class ChineseQuizScreenTest {
         rule.onNodeWithText("1 question remaining").assertExists()
         val fourth = pool.first { shown(it.pinyin) && shown(it.meaning) }
         rule.onNodeWithText(fourth.meaning).performClick()
+        rule.waitUntil(7_000) { passed }
         rule.runOnIdle { assertTrue(passed) }
     }
 }

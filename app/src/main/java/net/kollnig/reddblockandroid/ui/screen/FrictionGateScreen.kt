@@ -17,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -27,6 +30,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import net.kollnig.reddblockandroid.BuildConfig
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.data.CHINESE_VOCABULARY
@@ -380,6 +385,10 @@ private fun ColumnScope.ChineseQuizBody(
     var lockoutSecondsLeft by remember { mutableIntStateOf(0) }
     var questionStartMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var weeklyStats by remember { mutableStateOf(ChineseTypingStats.getWeeklyStats()) }
+    var finalAnswerChosen by remember { mutableStateOf(false) }
+    var finalSpeechComplete by remember { mutableStateOf(false) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    val finalUtteranceId = "quiz-final-word"
 
     // TTS: speak each word once it has been answered correctly.
     val context = LocalContext.current
@@ -390,10 +399,34 @@ private fun ColumnScope.ChineseQuizBody(
                 engine?.language = java.util.Locale.CHINESE
             }
         }
+        engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) = Unit
+            override fun onDone(utteranceId: String?) = complete(utteranceId)
+            @Deprecated("Required for older TTS engines")
+            override fun onError(utteranceId: String?) = complete(utteranceId)
+            override fun onError(utteranceId: String?, errorCode: Int) = complete(utteranceId)
+
+            private fun complete(utteranceId: String?) {
+                if (utteranceId == finalUtteranceId) {
+                    mainHandler.post { finalSpeechComplete = true }
+                }
+            }
+        })
         engine
     }
     DisposableEffect(Unit) {
         onDispose { tts?.shutdown() }
+    }
+
+    LaunchedEffect(finalAnswerChosen) {
+        if (finalAnswerChosen) {
+            // Keep the engine alive until playback finishes. An unavailable or
+            // unresponsive engine must never prevent an already-earned unlock.
+            withTimeoutOrNull(5_000L) {
+                snapshotFlow { finalSpeechComplete }.first { it }
+            }
+            onPassed()
+        }
     }
 
     LaunchedEffect(lockoutEndsAt) {
@@ -417,17 +450,21 @@ private fun ColumnScope.ChineseQuizBody(
     }
 
     val question = questions[currentIndex]
-    val isLocked = lockoutEndsAt != null
+    val isLocked = lockoutEndsAt != null || finalAnswerChosen
 
     fun choose(option: ChineseWord) {
         if (isLocked) return
         if (option == question.word) {
             ChineseTypingStats.recordWord(System.currentTimeMillis() - questionStartMillis)
             weeklyStats = ChineseTypingStats.getWeeklyStats()
-            tts?.speak(option.character, TextToSpeech.QUEUE_FLUSH, null, null)
             if (currentIndex >= totalCount - 1) {
-                onPassed()
+                finalAnswerChosen = true
+                if (tts?.speak(option.character, TextToSpeech.QUEUE_FLUSH, null, finalUtteranceId)
+                    != TextToSpeech.SUCCESS) {
+                    finalSpeechComplete = true
+                }
             } else {
+                tts?.speak(option.character, TextToSpeech.QUEUE_FLUSH, null, null)
                 currentIndex++
                 questionStartMillis = System.currentTimeMillis()
             }
