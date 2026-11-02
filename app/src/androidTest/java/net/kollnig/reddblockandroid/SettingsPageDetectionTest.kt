@@ -64,6 +64,12 @@ class SettingsPageDetectionTest {
                 .takeIf { it != 0 }?.let(resources::getString)
         }
         assertTrue("Settings has none of the category strings", titles.isNotEmpty())
+        val homeTitles = listOf("network_dashboard_title", "connected_devices_dashboard_title")
+            .mapNotNull { name ->
+                resources.getIdentifier(name, "string", "com.android.settings")
+                    .takeIf { it != 0 }?.let(resources::getString)
+            }
+        assertTrue("Settings has none of the home category strings", homeTitles.isNotEmpty())
 
         try {
             openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -72,8 +78,18 @@ class SettingsPageDetectionTest {
 
             // Settings home links to Accessibility and must stay reachable.
             openSettings(Settings.ACTION_SETTINGS)
-            assertFalse("Settings home shows an Accessibility category title",
-                awaitSettingsRoot { root -> titles.any { root.containsAccessibilityText(it) } })
+            // waitForIdle can return before navigation starts. Require a home
+            // marker, then inspect that same root rather than the old page.
+            assertTrue("Settings home did not become visible",
+                awaitSettingsRoot { root ->
+                    if (homeTitles.none { root.containsAccessibilityText(it) }) {
+                        false
+                    } else {
+                        assertFalse("Settings home shows an Accessibility category title",
+                            titles.any { root.containsAccessibilityText(it) })
+                        true
+                    }
+                })
         } finally {
             context.startActivity(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
