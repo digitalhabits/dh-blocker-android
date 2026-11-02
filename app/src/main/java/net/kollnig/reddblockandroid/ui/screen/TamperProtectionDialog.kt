@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import net.kollnig.reddblockandroid.R
+import net.kollnig.reddblockandroid.data.WordCount
 
 @Composable
 fun TamperProtectionDialog(
@@ -76,8 +77,8 @@ fun TamperProtectionDialog(
                 Slider(
                     value = wordCount.toFloat(),
                     onValueChange = { wordCount = it.toInt() },
-                    valueRange = 1f..50f,
-                    steps = 48,
+                    valueRange = WordCount.MIN.toFloat()..WordCount.MAX.toFloat(),
+                    steps = WordCount.MAX - WordCount.MIN - 1,
                     enabled = enabled,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(

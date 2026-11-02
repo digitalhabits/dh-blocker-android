@@ -2,6 +2,7 @@ package net.kollnig.reddblockandroid.util
 
 import android.os.SystemClock
 import androidx.core.content.edit
+import net.kollnig.reddblockandroid.data.WordCount
 import net.kollnig.reddblockandroid.schedule.Schedules
 
 /**
@@ -25,8 +26,8 @@ object TamperProtection {
         set(value) = prefs.edit { putBoolean(ENABLED_KEY, value) }
 
     var wordCount: Int
-        get() = prefs.getInt(WORD_COUNT_KEY, DEFAULT_WORD_COUNT)
-        set(value) = prefs.edit { putInt(WORD_COUNT_KEY, value) }
+        get() = WordCount.clamp(prefs.getInt(WORD_COUNT_KEY, DEFAULT_WORD_COUNT))
+        set(value) = prefs.edit { putInt(WORD_COUNT_KEY, WordCount.clamp(value)) }
 
     /** True when saving [enabled] and [wordCount] would make protection weaker than it is now. */
     fun wouldWeaken(enabled: Boolean, wordCount: Int): Boolean =

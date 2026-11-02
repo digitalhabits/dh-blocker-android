@@ -23,6 +23,12 @@ class TamperProtectionPolicyTest {
         assertEquals(10, requiredTamperWordCount(10, emptyList()))
     }
 
+    @Test
+    fun theRequirementNeverExceedsFiftyWords() {
+        assertEquals(50, requiredTamperWordCount(80, emptyList()))
+        assertEquals(50, requiredTamperWordCount(10, listOf(schedule("imported", 200))))
+    }
+
     private fun schedule(id: String, wordCount: Int) = Schedule(
         id = id,
         name = id,

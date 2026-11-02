@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.content.edit
 import net.kollnig.reddblockandroid.data.Schedule
 import net.kollnig.reddblockandroid.data.ScheduleTiming
+import net.kollnig.reddblockandroid.data.WordCount
 import net.kollnig.reddblockandroid.util.prefs
 import org.json.JSONArray
 import org.json.JSONObject
@@ -495,7 +496,7 @@ object Schedules {
             timing = timing,
             blockedApps = blockedApps,
             blockedWebsites = blockedWebsites,
-            frictionWordCount = json.optInt("frictionWordCount", 15),
+            frictionWordCount = WordCount.clamp(json.optInt("frictionWordCount", 15)),
             autoReenableMinutes = json.optInt("autoReenableMinutes", 1440),
             disabledUntil = if (json.has("disabledUntil")) json.optLong("disabledUntil") else null
         )

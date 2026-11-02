@@ -124,11 +124,12 @@ class TauriBackupImporterTest {
                 {"name":"valid","apps":["a"],"overrideDifficulty":{"count":7}},
                 {"name":"zero","apps":["a"],"overrideDifficulty":{"count":0}},
                 {"name":"fraction","apps":["a"],"overrideDifficulty":{"count":7.5}},
-                {"name":"text","apps":["a"],"overrideDifficulty":{"count":"9"}}
+                {"name":"text","apps":["a"],"overrideDifficulty":{"count":"9"}},
+                {"name":"huge","apps":["a"],"overrideDifficulty":{"count":200}}
             ]"""
         ))!!
 
-        assertEquals(listOf(7, 15, 15, 15), schedules.map { it.frictionWordCount })
+        assertEquals(listOf(7, 15, 15, 15, 50), schedules.map { it.frictionWordCount })
     }
 
     @Test

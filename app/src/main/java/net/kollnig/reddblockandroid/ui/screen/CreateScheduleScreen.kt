@@ -91,6 +91,7 @@ import kotlinx.coroutines.withContext
 import net.kollnig.reddblockandroid.R
 import net.kollnig.reddblockandroid.data.Schedule
 import net.kollnig.reddblockandroid.data.ScheduleTiming
+import net.kollnig.reddblockandroid.data.WordCount
 import net.kollnig.reddblockandroid.schedule.Schedules
 import net.kollnig.reddblockandroid.ui.theme.SoftRed
 import net.kollnig.reddblockandroid.ui.theme.TextHint
@@ -591,8 +592,8 @@ fun CreateScheduleScreen(
                 Slider(
                     value = frictionWordCount.toFloat(),
                     onValueChange = { frictionWordCount = it.toInt() },
-                    valueRange = 1f..50f,
-                    steps = 48,
+                    valueRange = WordCount.MIN.toFloat()..WordCount.MAX.toFloat(),
+                    steps = WordCount.MAX - WordCount.MIN - 1,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,

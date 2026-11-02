@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import net.kollnig.reddblockandroid.data.Schedule
 import net.kollnig.reddblockandroid.data.ScheduleTiming
+import net.kollnig.reddblockandroid.data.WordCount
 import java.math.BigDecimal
 import java.time.DayOfWeek
 import java.util.UUID
@@ -85,7 +86,7 @@ internal class TauriBackupImporter(
 
         val frictionWordCount = readPositiveInteger(
             blocklist.getAsJsonObjectOrNull("overrideDifficulty")?.get("count")
-        ) ?: DEFAULT_FRICTION_WORD_COUNT
+        )?.let(WordCount::clamp) ?: DEFAULT_FRICTION_WORD_COUNT
 
         val scheduleElement = blocklist.get("schedule")
         if (scheduleElement == null) {
